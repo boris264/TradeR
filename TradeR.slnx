@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Screener/Screener.csproj" />
+  <Project Path="TradeR.Infrastructure/TradeR.Infrastructure.csproj" Id="e218d48b-2bb6-446a-af5b-09c5a86bb35f" />
+  <Project Path="TradeR.Services/TradeR.Services.csproj" Id="d9a0dc0e-4882-4326-bb02-31b66383a935" />
+</Solution>
