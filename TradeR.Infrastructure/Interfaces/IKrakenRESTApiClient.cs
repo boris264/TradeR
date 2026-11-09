@@ -19,12 +19,17 @@ namespace TradeR.Infrastructure.Interfaces
         /// Optional Unix time in seconds; candles starting at or after it are returned. Passing
         /// <see cref="KrakenOhlcResult.Last"/> from a previous call returns the last closed candle again plus any newer ones.
         /// </param>
+        /// <param name="assetVersion">
+        /// How the pair is named in <see cref="KrakenOhlcResult.Pair"/>: <c>BTC/USD</c> for <see cref="KrakenAssetVersion.Version1"/>
+        /// (default), <c>XXBTZUSD</c> for <see cref="KrakenAssetVersion.Legacy"/>.
+        /// </param>
         /// <param name="cancellationToken">Cancels the request. Cancellation is thrown, not returned as a failure.</param>
         /// <returns>The candles, or a failure with a <c>Kraken.*</c> error code (see <see cref="Errors.KrakenErrors"/>).</returns>
         Task<Result<KrakenOhlcResult>> GetOhlcAsync(
             string pair,
             KrakenOhlcInterval interval,
             long? since = null,
+            KrakenAssetVersion assetVersion = KrakenAssetVersion.Version1,
             CancellationToken cancellationToken = default);
     }
 }

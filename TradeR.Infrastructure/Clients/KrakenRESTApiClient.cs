@@ -36,6 +36,7 @@ namespace TradeR.Infrastructure.Clients
             string pair,
             KrakenOhlcInterval interval,
             long? since = null,
+            KrakenAssetVersion assetVersion = KrakenAssetVersion.Version1,
             CancellationToken cancellationToken = default)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(pair);
@@ -47,6 +48,12 @@ namespace TradeR.Infrastructure.Clients
             if (since.HasValue)
             {
                 requestUri += string.Create(CultureInfo.InvariantCulture, $"&since={since.Value}");
+            }
+
+            // Legacy naming is Kraken's default and is requested by leaving the parameter out.
+            if (assetVersion != KrakenAssetVersion.Legacy)
+            {
+                requestUri += string.Create(CultureInfo.InvariantCulture, $"&assetVersion={(int)assetVersion}");
             }
 
             try
