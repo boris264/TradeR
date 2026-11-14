@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" pages="3">
   <diagram name="Components - Backtester" id="MwPEfxUYxMhMAgfGSQAe">
-    <mxGraphModel dx="2591" dy="964" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="2297" dy="801" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -24,14 +24,19 @@
             <mxGeometry height="150" width="260" x="330" y="540" as="geometry" />
           </mxCell>
         </object>
-        <object placeholders="1" c4Name="Simulation Engine" c4Type="Component" c4Technology="C# Service · Services" c4Description="Runs one strategy on one pair: feeds candles one at a time (no look-ahead), simulates fills (signals at the next candle&#39;s open, stop loss / take profit at their own price), tracks the position and account size, and produces the trade rows" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%: %c4Technology%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="cmp-engine">
+        <object placeholders="1" c4Name="Simulation Engine" c4Type="Component" c4Technology="C# Service · Backtester" c4Description="Runs one strategy on one pair: feeds candles one at a time (no look-ahead), simulates fills (signals at the next candle&#39;s open, stop loss / take profit at their own price), tracks the position and account size, and produces the trade rows" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%: %c4Technology%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="cmp-engine">
           <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#63BEF2;fontColor=#ffffff;align=center;arcSize=6;strokeColor=#2086C9;metaEdit=1;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
             <mxGeometry height="150" width="260" x="330" y="760" as="geometry" />
           </mxCell>
         </object>
-        <object placeholders="1" c4Name="Market Data Loader" c4Type="Component" c4Technology="C# Repository · Dapper · Infrastructure" c4Description="Loads the OHLCVT candles for a pair, interval and period, including warm-up candles before the start" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%: %c4Technology%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="cmp-loader">
+        <object placeholders="1" c4Name="Market Data Loader" c4Type="Component" c4Technology="C# Service · Services" c4Description="Validates the request (pair, interval, period), adds warm-up candles before the start, and streams candles one at a time through the candle source interface" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%: %c4Technology%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="cmp-loader">
           <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#63BEF2;fontColor=#ffffff;align=center;arcSize=6;strokeColor=#2086C9;metaEdit=1;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
             <mxGeometry height="150" width="260" x="-40" y="760" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Candle Reader" c4Type="Component" c4Technology="C# Repository · Npgsql · Infrastructure" c4Description="Implements the candle source interface: streams OHLCVT rows in time order with NpgsqlDataReader as IAsyncEnumerable and converts them to the Services candle model" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%: %c4Technology%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="cmp-candle-reader">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#63BEF2;fontColor=#ffffff;align=center;arcSize=6;strokeColor=#2086C9;metaEdit=1;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
+            <mxGeometry height="150" width="260" x="-40" y="540" as="geometry" />
           </mxCell>
         </object>
         <object placeholders="1" c4Name="Strategy" c4Type="Component" c4Technology="C# Service · Services" c4Description="Decides when to open and close a position (long or short) for each candle and defines its fixed stop loss. One implementation per strategy" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%: %c4Technology%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="cmp-strategy">
@@ -44,7 +49,7 @@
             <mxGeometry height="150" width="260" x="-40" y="1210" as="geometry" />
           </mxCell>
         </object>
-        <object placeholders="1" c4Name="P&amp;L Calculator" c4Type="Component" c4Technology="C# Helper · SharedKernel" c4Description="Calculates a trade&#39;s P&amp;L including the fees of every executed order (hard-coded Kraken fee constants), for longs and simulated shorts" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%: %c4Technology%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="cmp-pnl">
+        <object placeholders="1" c4Name="P&amp;L Calculator" c4Type="Component" c4Technology="C# Helper · SharedKernel" c4Description="Calculates a trade&#39;s P&amp;L including the fees of every executed order (fee passed in when created), for longs and simulated shorts" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%: %c4Technology%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="cmp-pnl">
           <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#63BEF2;fontColor=#ffffff;align=center;arcSize=6;strokeColor=#2086C9;metaEdit=1;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
             <mxGeometry height="150" width="260" x="330" y="1000" as="geometry" />
           </mxCell>
@@ -61,7 +66,7 @@
         </object>
         <object placeholders="1" c4Name="Backtest Workbook" c4Type="Container" c4Technology="Excel (.xlsx)" c4Description="Copy of the template: one shared data sheet with a row per trade; its formulas and graphs summarize the results" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%: %c4Technology%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="cmp-workbook">
           <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;fillColor=#23A2D9;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#0E7DAD;metaEdit=1;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
-            <mxGeometry height="150" width="260" x="1060" y="1000" as="geometry" />
+            <mxGeometry height="150" width="260" x="1140" y="1000" as="geometry" />
           </mxCell>
         </object>
         <object placeholders="1" c4Type="Relationship" c4Description="Selects the backtest options" label="&lt;div style=&quot;text-align: center&quot;&gt;&lt;b&gt;%c4Description%&lt;/b&gt;&lt;/div&gt;" id="cmp-rel-user-menu">
@@ -84,8 +89,13 @@
             <mxGeometry relative="1" as="geometry" />
           </mxCell>
         </object>
-        <object placeholders="1" c4Type="Relationship" c4Description="Reads candles" c4Technology="SQL, Dapper" label="&lt;div style=&quot;text-align: center&quot;&gt;&lt;b&gt;%c4Description%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;text-align: center&quot;&gt;[%c4Technology%]&lt;/div&gt;" id="cmp-rel-loader-db">
-          <mxCell edge="1" parent="1" source="cmp-loader" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeWidth=1;endFill=1;strokeColor=#828282;elbow=vertical;metaEdit=1;endSize=14;startSize=14;jumpStyle=arc;jumpSize=16;rounded=0;edgeStyle=orthogonalEdgeStyle;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="cmp-db">
+        <object placeholders="1" c4Type="Relationship" c4Description="Streams candles" c4Technology="candle source interface" label="&lt;div style=&quot;text-align: center&quot;&gt;&lt;b&gt;%c4Description%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;text-align: center&quot;&gt;[%c4Technology%]&lt;/div&gt;" id="cmp-rel-loader-reader">
+          <mxCell edge="1" parent="1" source="cmp-loader" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeWidth=1;endFill=1;strokeColor=#828282;elbow=vertical;metaEdit=1;endSize=14;startSize=14;jumpStyle=arc;jumpSize=16;rounded=0;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="cmp-candle-reader">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Type="Relationship" c4Description="Streams candles" c4Technology="SQL, Npgsql data reader" label="&lt;div style=&quot;text-align: center&quot;&gt;&lt;b&gt;%c4Description%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;text-align: center&quot;&gt;[%c4Technology%]&lt;/div&gt;" id="cmp-rel-reader-db">
+          <mxCell edge="1" parent="1" source="cmp-candle-reader" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeWidth=1;endFill=1;strokeColor=#828282;elbow=vertical;metaEdit=1;endSize=14;startSize=14;jumpStyle=arc;jumpSize=16;rounded=0;edgeStyle=orthogonalEdgeStyle;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="cmp-db">
             <mxGeometry relative="1" as="geometry" />
           </mxCell>
         </object>
@@ -225,7 +235,7 @@
             <mxGeometry relative="1" as="geometry" />
           </mxCell>
         </object>
-        <object placeholders="1" c4Type="Relationship" c4Description="Reads candles" c4Technology="SQL, Dapper" label="&lt;div style=&quot;text-align: center&quot;&gt;&lt;b&gt;%c4Description%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;text-align: center&quot;&gt;[%c4Technology%]&lt;/div&gt;" id="con-rel-backtester-db">
+        <object placeholders="1" c4Type="Relationship" c4Description="Streams candles" c4Technology="SQL, Npgsql data reader" label="&lt;div style=&quot;text-align: center&quot;&gt;&lt;b&gt;%c4Description%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;text-align: center&quot;&gt;[%c4Technology%]&lt;/div&gt;" id="con-rel-backtester-db">
           <mxCell edge="1" parent="1" source="con-backtester" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeWidth=1;endFill=1;strokeColor=#828282;elbow=vertical;metaEdit=1;endSize=14;startSize=14;jumpStyle=arc;jumpSize=16;rounded=0;edgeStyle=orthogonalEdgeStyle;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="con-db">
             <mxGeometry relative="1" as="geometry" />
           </mxCell>

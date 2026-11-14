@@ -30,13 +30,19 @@ Projects and dependencies (arrows point to what is referenced):
 - **TradeR.SharedKernel**: no dependencies. Contains the platform-independent building blocks:
   - `Results/`: `Result`, `Result<T>`, `Error`.
   - `Indicators/`: SMA, EMA, `IndicatorErrors`.
+  - `Common/PnLCalculator`: a generic P&L calculator, not tied to any exchange. The fee is passed to its constructor. A partial close pays only its share of the opening fee. Invalid input throws.
+  - `Enums/PositionDirection`: `Long`, `Short`.
 - **TradeR.Infrastructure** → SharedKernel. **Everything that talks to the outside world goes here** (HTTP APIs, database scripts). Today it holds:
   - the Kraken REST client (`IKrakenRESTApiClient`, `GET /0/public/OHLC` only);
   - its DI registration, `services.AddKrakenRESTApi(configuration)`, which sets up a named `HttpClient` (`KrakenRESTApiClient.HttpClientName`) with `AddStandardResilienceHandler()` and an optional `Kraken:BaseUrl` setting;
   - the SQL schema script.
 - **Importer** (console) → Infrastructure, Services. Loads Kraken's historical CSV dumps.
-- **Backtester** (console) → Infrastructure, Services. Still a stub.
+- **Backtester** (console) → Infrastructure, Services. Still a stub. Its design (streamed candles, layers, fills, Excel output) is in `docs/backtester.md`.
 - **TradeR.Services**: an empty placeholder.
+- **Layering rule** (the target design; the project references aren't wired up this way yet):
+  - Services is the application core. It owns the models and the interfaces it consumes, e.g. the historical candle source.
+  - Infrastructure implements those interfaces, so the references run Infrastructure → Services → SharedKernel. Services never references Infrastructure.
+  - An interface lives with the code that consumes it. Exchange-specific clients such as `IKrakenRESTApiClient` stay in Infrastructure.
 - **TradeR.Tests** (NUnit): one test project for the whole solution, with folders mirroring the area under test (e.g. `SharedKernel/Indicators/`).
 - The `Screener/` folder only contains leftover `bin`/`obj`. That project was removed.
 
