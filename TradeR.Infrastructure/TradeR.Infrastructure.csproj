@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\TradeR.Services\TradeR.Services.csproj" />
     <ProjectReference Include="..\TradeR.SharedKernel\TradeR.SharedKernel.csproj" />
   </ItemGroup>
 
