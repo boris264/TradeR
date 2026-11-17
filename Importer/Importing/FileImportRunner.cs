@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Importer.Data;
 using Importer.Files;
+using TradeR.Infrastructure.Repositories.Interfaces;
 
 namespace Importer.Importing
 {
@@ -19,13 +20,13 @@ namespace Importer.Importing
     /// <summary>Imports files in parallel, logging progress per file and continuing past failures.</summary>
     internal sealed class FileImportRunner
     {
-        private readonly AssetPairRepository _assetPairs;
+        private readonly IKrakenOhlcvtRepository _ohlcvtRepository;
         private readonly IFileImporter _fileImporter;
         private readonly int _maxParallelFiles;
 
-        public FileImportRunner(AssetPairRepository assetPairs, IFileImporter fileImporter, int maxParallelFiles)
+        public FileImportRunner(IKrakenOhlcvtRepository ohlcvtRepository, IFileImporter fileImporter, int maxParallelFiles)
         {
-            _assetPairs = assetPairs;
+            _ohlcvtRepository = ohlcvtRepository;
             _fileImporter = fileImporter;
             _maxParallelFiles = maxParallelFiles;
         }
@@ -51,7 +52,7 @@ namespace Importer.Importing
 
                 try
                 {
-                    await _assetPairs.EnsureExistsAsync(file.AssetPair, token);
+                    await _ohlcvtRepository.EnsureAssetPairExistsAsync(file.AssetPair, token);
                     FileImportResult result = await _fileImporter.ImportAsync(file, token);
 
                     Interlocked.Increment(ref succeeded);

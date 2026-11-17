@@ -9,6 +9,7 @@ using Importer.Files;
 using Importer.Importing;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
+using TradeR.Infrastructure.Repositories;
 
 namespace Importer
 {
@@ -83,7 +84,7 @@ namespace Importer
                 ? new OhlcvtWriter(dataSource)
                 : new TradesWriter(dataSource);
 
-            FileImportRunner runner = new FileImportRunner(new AssetPairRepository(dataSource), fileImporter, maxParallelFiles);
+            FileImportRunner runner = new FileImportRunner(new KrakenOhlcvtRepository(dataSource), fileImporter, maxParallelFiles);
 
             Console.WriteLine($"Importing {discovery.Files.Count:N0} {arguments.Kind} file(s) from {arguments.Folder} ({maxParallelFiles} at a time)");
 

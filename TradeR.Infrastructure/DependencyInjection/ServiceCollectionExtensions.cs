@@ -1,10 +1,15 @@
-using System;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Npgsql;
+using System;
 using TradeR.Infrastructure.Clients;
 using TradeR.Infrastructure.Configurations.Kraken;
 using TradeR.Infrastructure.Interfaces;
+using TradeR.Infrastructure.Repositories;
+using TradeR.Infrastructure.Repositories.Interfaces;
+using TradeR.Infrastructure.Services;
+using TradeR.Services.Interfaces;
 
 namespace TradeR.Infrastructure.DependencyInjection
 {
@@ -42,6 +47,23 @@ namespace TradeR.Infrastructure.DependencyInjection
             services.AddTransient<IKrakenRESTApiClient, KrakenRESTApiClient>();
 
             return services;
+        }
+
+        public static void AddInfrastructureServices(
+            this IServiceCollection services,
+            IConfiguration configuration)
+        {
+            string? connectionString = configuration.GetConnectionString("KrakenMarketData");
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new ArgumentException("KrakenMarketData connection string is not set!", nameof(configuration));
+            }
+
+            services.AddSingleton(
+                x => new NpgsqlDataSourceBuilder(connectionString).Build());
+
+            services.AddScoped<IKrakenOhlcvtRepository, KrakenOhlcvtRepository>();
+            services.AddScoped<ICandleReader, KrakenCandleReader>();
         }
     }
 }

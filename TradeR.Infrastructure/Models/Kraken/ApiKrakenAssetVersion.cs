@@ -4,7 +4,7 @@ namespace TradeR.Infrastructure.Models.Kraken
     /// Controls how Kraken names assets and pairs in responses (the <c>assetVersion</c> query parameter).
     /// Candle values are identical either way; only the names differ.
     /// </summary>
-    public enum KrakenAssetVersion
+    public enum ApiKrakenAssetVersion
     {
         /// <summary>Kraken's internal names, e.g. <c>XXBTZUSD</c>. Sent by omitting <c>assetVersion</c>.</summary>
         Legacy = 0,

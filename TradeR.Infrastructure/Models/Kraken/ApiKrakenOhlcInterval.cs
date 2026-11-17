@@ -1,7 +1,7 @@
 namespace TradeR.Infrastructure.Models.Kraken
 {
     /// <summary>Candle intervals supported by Kraken's OHLC endpoint. Each value is the interval in minutes.</summary>
-    public enum KrakenOhlcInterval
+    public enum ApiKrakenOhlcInterval
     {
         OneMinute = 1,
         FiveMinutes = 5,

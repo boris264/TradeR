@@ -32,11 +32,11 @@ namespace TradeR.Infrastructure.Clients
             _httpClientFactory = httpClientFactory;
         }
 
-        public async Task<Result<KrakenOhlcResult>> GetOhlcAsync(
+        public async Task<Result<ApiKrakenOhlcResult>> GetOhlcAsync(
             string pair,
-            KrakenOhlcInterval interval,
+            ApiKrakenOhlcInterval interval,
             long? since = null,
-            KrakenAssetVersion assetVersion = KrakenAssetVersion.Version1,
+            ApiKrakenAssetVersion assetVersion = ApiKrakenAssetVersion.Version1,
             CancellationToken cancellationToken = default)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(pair);
@@ -51,7 +51,7 @@ namespace TradeR.Infrastructure.Clients
             }
 
             // Legacy naming is Kraken's default and is requested by leaving the parameter out.
-            if (assetVersion != KrakenAssetVersion.Legacy)
+            if (assetVersion != ApiKrakenAssetVersion.Legacy)
             {
                 requestUri += string.Create(CultureInfo.InvariantCulture, $"&assetVersion={(int)assetVersion}");
             }
@@ -71,7 +71,7 @@ namespace TradeR.Infrastructure.Clients
                 }
 
                 await using Stream content = await response.Content.ReadAsStreamAsync(cancellationToken);
-                KrakenResponse<KrakenOhlcResult>? body = await JsonSerializer.DeserializeAsync<KrakenResponse<KrakenOhlcResult>>(
+                KrakenResponse<ApiKrakenOhlcResult>? body = await JsonSerializer.DeserializeAsync<KrakenResponse<ApiKrakenOhlcResult>>(
                     content,
                     JsonOptions,
                     cancellationToken);

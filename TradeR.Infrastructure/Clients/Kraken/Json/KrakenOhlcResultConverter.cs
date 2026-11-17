@@ -12,16 +12,16 @@ namespace TradeR.Infrastructure.Clients.Kraken.Json
     /// <c>{"XXBTZUSD": [[time, "open", "high", "low", "close", "vwap", "volume", count], ...], "last": 1763078400}</c>.
     /// The pair key differs per request, and each candle is an array of mixed types, so neither maps to a plain class.
     /// </summary>
-    internal sealed class KrakenOhlcResultConverter : JsonConverter<KrakenOhlcResult>
+    internal sealed class KrakenOhlcResultConverter : JsonConverter<ApiKrakenOhlcResult>
     {
         private const string LastPropertyName = "last";
 
-        public override KrakenOhlcResult Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override ApiKrakenOhlcResult Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             EnsureToken(ref reader, JsonTokenType.StartObject);
 
             string? pair = null;
-            List<KrakenOhlcCandle> candles = new List<KrakenOhlcCandle>();
+            List<ApiKrakenOhlcCandle> candles = new List<ApiKrakenOhlcCandle>();
             long last = 0;
 
             while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
@@ -48,15 +48,15 @@ namespace TradeR.Infrastructure.Clients.Kraken.Json
                 throw new JsonException("The OHLC result contains no candle data.");
             }
 
-            return new KrakenOhlcResult(pair, candles, last);
+            return new ApiKrakenOhlcResult(pair, candles, last);
         }
 
-        public override void Write(Utf8JsonWriter writer, KrakenOhlcResult value, JsonSerializerOptions options)
+        public override void Write(Utf8JsonWriter writer, ApiKrakenOhlcResult value, JsonSerializerOptions options)
         {
             throw new NotSupportedException("Kraken OHLC results are only read, never written.");
         }
 
-        private static void ReadCandles(ref Utf8JsonReader reader, List<KrakenOhlcCandle> candles)
+        private static void ReadCandles(ref Utf8JsonReader reader, List<ApiKrakenOhlcCandle> candles)
         {
             EnsureToken(ref reader, JsonTokenType.StartArray);
 
@@ -81,7 +81,7 @@ namespace TradeR.Infrastructure.Clients.Kraken.Json
                     reader.Skip();
                 }
 
-                candles.Add(new KrakenOhlcCandle(time, open, high, low, close, vwap, volume, count));
+                candles.Add(new ApiKrakenOhlcCandle(time, open, high, low, close, vwap, volume, count));
             }
 
             EnsureToken(ref reader, JsonTokenType.EndArray);
