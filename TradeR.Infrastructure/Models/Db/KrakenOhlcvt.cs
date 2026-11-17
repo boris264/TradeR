@@ -1,4 +1,4 @@
-﻿namespace TradeR.Infrastructure.Models.Kraken
+﻿namespace TradeR.Infrastructure.Models.Db
 {
     public class KrakenOhlcvt
     {

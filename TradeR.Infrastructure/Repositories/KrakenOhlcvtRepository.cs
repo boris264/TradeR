@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using TradeR.Infrastructure.Models.Kraken;
+using TradeR.Infrastructure.Models.Db;
 using TradeR.Infrastructure.Repositories.Interfaces;
 
 namespace TradeR.Infrastructure.Repositories

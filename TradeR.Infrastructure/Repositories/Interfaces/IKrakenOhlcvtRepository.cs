@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using TradeR.Infrastructure.Models.Kraken;
+using TradeR.Infrastructure.Models.Db;
 
 namespace TradeR.Infrastructure.Repositories.Interfaces
 {
