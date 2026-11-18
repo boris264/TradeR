@@ -11,5 +11,7 @@ namespace TradeR.Services.Models.Market
         public DateTime To { get; set; }
 
         public MarketInterval Interval { get; set; }
+
+        public int CandlesToPreload { get; set; }
     }
 }

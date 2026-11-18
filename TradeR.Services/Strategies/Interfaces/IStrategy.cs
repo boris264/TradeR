@@ -12,6 +12,12 @@ namespace TradeR.Services.Strategies.Interfaces
         public string Name { get; }
 
         /// <summary>
+        /// The amount of candles that need to be loaded beforehand, for the strategy
+        /// to run succesfully
+        /// </summary>
+        public int CandlesToPreload { get; }
+
+        /// <summary>
         /// Provides the next candle for the strategy
         /// </summary>
         /// <param name="candle">The OHLCVT candle</param>
