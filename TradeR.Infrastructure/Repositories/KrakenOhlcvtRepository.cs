@@ -14,7 +14,7 @@ namespace TradeR.Infrastructure.Repositories
         private const string EnsureAssetPairExistsSql =
             "INSERT INTO kraken.asset_pairs (name) VALUES (@Name) ON CONFLICT DO NOTHING";
 
-        private static readonly string GetAssetPairCandlesSql = """
+        private static readonly string StreamAssetPairCandlesSql = """
             SELECT timestamp,
                    open,
                    high,
@@ -46,7 +46,7 @@ namespace TradeR.Infrastructure.Repositories
                 cancellationToken: cancellationToken));
         }
 
-        public async IAsyncEnumerable<KrakenOhlcvt> GetAssetPairCandlesForTimespan(
+        public async IAsyncEnumerable<KrakenOhlcvt> StreamAssetPairCandlesForTimespan(
             string assetPair,
             long from,
             long to,
@@ -56,7 +56,7 @@ namespace TradeR.Infrastructure.Repositories
         {
             await using NpgsqlConnection connection = await dataSource.OpenConnectionAsync(cancellationToken);
             await using var reader = await connection.ExecuteReaderAsync(new CommandDefinition(
-                GetAssetPairCandlesSql,
+                StreamAssetPairCandlesSql,
                 new
                 {
                     AssetPair = assetPair,

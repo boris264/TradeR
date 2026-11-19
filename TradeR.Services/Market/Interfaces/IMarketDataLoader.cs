@@ -1,6 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using TradeR.Services.Models.Candles;
 using TradeR.Services.Models.Market;
+using TradeR.SharedKernel.Results;
 
 namespace TradeR.Services.Market.Interfaces
 {
@@ -13,6 +16,6 @@ namespace TradeR.Services.Market.Interfaces
         /// to preload
         /// </param>
         /// <returns>A stream of OHLCVT candles for the asset</returns>
-        IAsyncEnumerable<OhlcvtCandle> Load(MarketDataLoadRequest request);
+        Task<Result<IAsyncEnumerable<OhlcvtCandle>>> Load(MarketDataLoadRequest request, CancellationToken cancellationToken);
     }
 }

@@ -25,7 +25,7 @@ namespace TradeR.Services.Interfaces
         /// doesn't have <see cref="DateTimeKind.Utc"/>, or <paramref name="from"/> is after <paramref name="to"/>.
         /// Thrown as soon as <c>Load</c> is called, not when the stream is enumerated.
         /// </exception>
-        IAsyncEnumerable<OhlcvtCandle> Load(
+        IAsyncEnumerable<OhlcvtCandle> StreamCandles(
             string assetPair,
             DateTime from,
             DateTime to,

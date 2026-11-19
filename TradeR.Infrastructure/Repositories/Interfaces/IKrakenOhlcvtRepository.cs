@@ -28,7 +28,7 @@ namespace TradeR.Infrastructure.Repositories.Interfaces
         /// Cancels the query and the read. A token passed through <c>WithCancellation</c> on the stream works too.
         /// </param>
         /// <returns>The candles in the period, ordered by timestamp. The stream is empty when there are none.</returns>
-        IAsyncEnumerable<KrakenOhlcvt> GetAssetPairCandlesForTimespan(
+        IAsyncEnumerable<KrakenOhlcvt> StreamAssetPairCandlesForTimespan(
             string assetPair,
             long from,
             long to,
