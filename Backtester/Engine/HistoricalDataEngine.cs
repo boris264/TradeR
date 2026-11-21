@@ -226,7 +226,8 @@ namespace Backtester.Engine
                     .ToUniversalTime()
                     .Date,
                 EntryReason = openPosition.EntryReason,
-                ExitReason = openPosition.ExitReason ?? string.Empty
+                ExitReason = openPosition.ExitReason ?? string.Empty,
+                AccountSize = account.Balance,
             };
         }
     }

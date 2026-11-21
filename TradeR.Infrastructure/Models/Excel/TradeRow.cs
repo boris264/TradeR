@@ -35,5 +35,7 @@ namespace TradeR.Infrastructure.Models.Excel
         public string EntryReason { get; set; } = string.Empty;
 
         public string ExitReason { get; set; } = string.Empty;
+
+        public double AccountSize { get; set; }
     }
 }
