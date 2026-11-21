@@ -209,7 +209,7 @@ namespace Backtester.Engine
                     .ToUniversalTime()
                     .Date,
                 EntryReason = openPosition.EntryReason,
-                ExitReason = openPosition.ExitReason ?? "End of backtest"
+                ExitReason = openPosition.ExitReason ?? string.Empty
             };
         }
     }

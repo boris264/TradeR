@@ -66,7 +66,7 @@ The editable source, which also has the System Context and Containers pages, is 
 - A strategy with several pairs runs on each pair separately. Each pair is traded on its own, not as one combined portfolio.
 
 ## Results
-- **One Excel workbook per backtest**, created by copying an Excel template, which will be provided.
+- **One Excel workbook per backtest**, created by copying the template [`TradeR.Infrastructure/Templates/BacktestTemplate.xlsx`](../TradeR.Infrastructure/Templates/BacktestTemplate.xlsx).
 - **The template has one shared data sheet**, and it's the only sheet the Backtester writes to. Every strategy's trades go into it.
 - **Each trade is one row**, with these columns:
 
@@ -87,6 +87,7 @@ The editable source, which also has the System Context and Containers pages, is 
 | Close time | When the position was closed (UTC) |
 | Entry reason | What triggered the entry, as described by the strategy, e.g. "EMA 9 crossed above EMA 21" |
 | Exit reason | What triggered the exit: the strategy's own description of its exit signal, Stop loss, Take profit, or End of backtest |
+| Account size | The run's account size in the pair's currency, the same on every row of the run. Used for return % and drawdown % |
 
 Hold time is calculated in the template from the open and close times.
 
@@ -95,6 +96,21 @@ Hold time is calculated in the template from the open and close times.
 
 - The template's formulas operate on the shared data sheet and produce the aggregations and graphs automatically. The Backtester writes the trades and nothing else; all analysis lives in the template.
 - Writing to the workbook must be thread-safe: strategies run in parallel and may finish at the same time, and they all write to the same sheet.
+
+### Template
+- **Sheets:**
+  - **Read me:** the data contract and the limits.
+  - **Summary:** one row per run (strategy × pair × interval), plus a net P&L chart. It shows trades, win rate, net P&L, return %, profit factor, fees, average and largest win/loss, payoff ratio, expectancy, the long/short split, average hold time, max drawdown (amount and %), and positions still open at the end.
+  - **Exit reasons:** per run, the count and P&L of Stop loss, Take profit, signal and End of backtest exits.
+  - **Trades:** the data sheet.
+  - **Calc:** a hidden helper sheet.
+- **Data contract:** the sheet is `Trades`, with headers in row 1 and trades from row 2, in the column order of the table above.
+  - Open and close times are Excel date-times in UTC.
+  - Position is exactly `Long` or `Short`.
+  - The engine's exit reasons are exactly `Stop loss`, `Take profit` and `End of backtest`.
+  - The writer finds the next free row by column A. The `Trades` sheet has no formulas.
+- **Limits:** 50 runs and 50,000 trades per backtest. It needs Excel 2019 or Microsoft 365, because it uses `MAXIFS` and `MINIFS`.
+- **Runs aren't added together,** because they can be in different currencies.
 
 ## Fills, fees and slippage
 - **Signal fills:** entries and exits triggered by a strategy's signal are filled at the **next candle's open**. A signal produced on a candle's close is executed at the open of the following candle, so a trade never uses a price that wasn't known when the decision was made.
