@@ -1,5 +1,6 @@
 ﻿using System;
 using TradeR.Services.Models.Market;
+using TradeR.SharedKernel.Extensions;
 
 namespace Backtester.Engine
 {
@@ -10,26 +11,23 @@ namespace Backtester.Engine
             DateTime from,
             DateTime to,
             MarketInterval interval,
+            double riskSize,
             double initialBalance = 5000.0)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(assetPair, nameof(assetPair));
+            ArgumentException.ThrowIfNotUtc(from, nameof(from));
+            ArgumentException.ThrowIfNotUtc(to, nameof(to));
+
             ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(initialBalance, 0);
-
-            if (from.Kind != DateTimeKind.Utc)
-            {
-                throw new ArgumentException("Parameter must be in UTC format!", nameof(from));
-            }
-
-            if (to.Kind != DateTimeKind.Utc)
-            {
-                throw new ArgumentException("Parameter must be in UTC format!", nameof(to));
-            }
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(riskSize, 1);
+            ArgumentOutOfRangeException.ThrowIfLessThan(riskSize, 0);
 
             AssetPair = assetPair;
             From = from;
             To = to;
             Interval = interval;
             InitialBalance = initialBalance;
+            RiskSize = riskSize;
         }
         public required string AssetPair { get; init; }
 
@@ -40,5 +38,7 @@ namespace Backtester.Engine
         public MarketInterval Interval { get; init; }
 
         public double InitialBalance { get; init; }
+
+        public double RiskSize { get; init; }
     }
 }

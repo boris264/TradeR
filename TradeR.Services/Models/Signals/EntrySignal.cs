@@ -12,6 +12,6 @@ namespace TradeR.Services.Models.Signals
 
         public double? TakeProfitPrice { get; init; }
 
-        public double? StopLossPrice { get; init; }
+        public double StopLossPrice { get; init; }
     }
 }

@@ -2,7 +2,7 @@
 {
     public class Order
     {
-        public OrderType Type { get; set; }
+        public OrderType Type { get; init; }
 
         public double Amount { get; set; }
 
