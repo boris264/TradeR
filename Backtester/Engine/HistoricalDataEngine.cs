@@ -96,12 +96,41 @@ namespace Backtester.Engine
                     if (signalType == SignalType.Entry)
                     {
                         var entrySignal = currentSignal as EntrySignal;
-                        HandleEntrySignal(entrySignal!, candle);
+                        OpenPosition(entrySignal!, candle);
+
+                        strategy.PlaceOrder(openPosition!.OpenOrder);
                     }
                     else
                     {
                         var exitSignal = currentSignal as ExitSignal;
-                        HandleExitSignal(exitSignal!, candle);
+                        ClosePosition(candle.Close, candle.Timestamp, exitSignal!.Reason);
+
+                        strategy.PlaceOrder(openPosition!.CloseOrder!);
+                    }
+                }
+
+                if (openPosition != null)
+                {
+                    bool takeProfitCompareFunc() => openPosition.TakeProfit != null &&
+                              (openPosition.Direction == PositionDirection.Long
+                                   ? openPosition.TakeProfit.Price >= candle.Open
+                                   : openPosition.TakeProfit.Price <= candle.Open);
+                    bool stopLossCompareFunc() => openPosition.StopLoss != null &&
+                              (openPosition.Direction == PositionDirection.Long
+                                   ? openPosition.StopLoss.Price <= candle.Open
+                                   : openPosition.StopLoss.Price >= candle.Open);
+
+                    if (stopLossCompareFunc())
+                    {
+                        ClosePosition(openPosition.StopLoss!.Price, candle.Timestamp, "Stop Loss");
+
+                        strategy.PlaceOrder(openPosition!.CloseOrder!);
+                    }
+                    else if (takeProfitCompareFunc())
+                    {
+                        ClosePosition(openPosition.TakeProfit!.Price, candle.Timestamp, "Take Profit");
+
+                        strategy.PlaceOrder(openPosition!.CloseOrder!);
                     }
                 }
 
@@ -111,25 +140,13 @@ namespace Backtester.Engine
 
             if (openPosition != null)
             {
-                // Manually close the position
-                var closeOrder = new Order()
-                {
-                    Type = openPosition.Direction == PositionDirection.Long
-                           ? OrderType.Buy
-                           : OrderType.Sell,
-                    Amount = openPosition.OpenOrder.Amount,
-                    Price = currentCandle.Close
-                };
-                openPosition.Close(closeOrder, currentCandle!.Timestamp, "End of backtest");
-
-                var trade = NewTradeRow();
-                SaveTradeToExcel(trade);
+                ClosePosition(currentCandle.Close, currentCandle.Timestamp, "End of backtest");
             }
 
             return Result.Success();
         }
 
-        private void HandleEntrySignal(EntrySignal signal, OhlcvtCandle candle)
+        private void OpenPosition(EntrySignal signal, OhlcvtCandle candle)
         {
             var amountToBuyBasedOnRiskSize = Math.Abs(account.RiskAmount / (candle.Open - signal.StopLossPrice));
             var mainOrder = new Order()
@@ -154,7 +171,7 @@ namespace Backtester.Engine
             openPosition.PlaceStopLoss(amountToBuyBasedOnRiskSize, signal.StopLossPrice);
         }
 
-        private void HandleExitSignal(ExitSignal signal, OhlcvtCandle candle)
+        private void ClosePosition(double price, long timestamp, string reason)
         {
             if (openPosition == null)
             {
@@ -167,9 +184,9 @@ namespace Backtester.Engine
                            ? OrderType.Sell
                            : OrderType.Buy,
                 Amount = openPosition.OpenOrder.Amount,
-                Price = candle.Open
+                Price = price
             };
-            openPosition.Close(closeOrder, candle.Timestamp, signal.Reason);
+            openPosition.Close(closeOrder, timestamp, reason);
 
             var trade = NewTradeRow();
             SaveTradeToExcel(trade);
