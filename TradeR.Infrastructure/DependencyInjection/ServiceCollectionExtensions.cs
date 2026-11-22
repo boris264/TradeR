@@ -64,6 +64,7 @@ namespace TradeR.Infrastructure.DependencyInjection
 
             services.AddScoped<IKrakenOhlcvtRepository, KrakenOhlcvtRepository>();
             services.AddScoped<ICandleReader, KrakenCandleReader>();
+            services.AddScoped<ITradeWriter, TradeWriter>();
         }
     }
 }
