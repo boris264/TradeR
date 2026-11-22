@@ -3,6 +3,8 @@ using Backtester.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TradeR.Infrastructure.Models.Excel;
@@ -49,8 +51,10 @@ namespace Backtester.Engine
             };
         }
 
-        public async Task<Result> StartAsync(CancellationToken cancellationToken)
+        public async Task<Result<IEnumerable<TradeRow>>> StartAsync(CancellationToken cancellationToken)
         {
+            var trades = new List<TradeRow>();
+
             var marketDataLoadRequest = new MarketDataLoadRequest()
             {
                 AssetPair = engineConfiguration.AssetPair,
@@ -71,7 +75,7 @@ namespace Backtester.Engine
                     engineConfiguration.Interval,
                     loadMarketDataResult.Error);
 
-                return Result.Failure(loadMarketDataResult.Error);
+                return Result.Failure<IEnumerable<TradeRow>>(loadMarketDataResult.Error);
             }
 
             Signal? currentSignal = null;
@@ -103,7 +107,7 @@ namespace Backtester.Engine
                     else
                     {
                         var exitSignal = currentSignal as ExitSignal;
-                        ClosePosition(candle.Close, candle.Timestamp, exitSignal!.Reason);
+                        ClosePosition(candle.Close, candle.Timestamp, exitSignal!.Reason, trades);
 
                         strategy.PlaceOrder(openPosition!.CloseOrder!);
                     }
@@ -122,13 +126,13 @@ namespace Backtester.Engine
 
                     if (stopLossCompareFunc())
                     {
-                        ClosePosition(openPosition.StopLoss!.Price, candle.Timestamp, "Stop Loss");
+                        ClosePosition(openPosition.StopLoss!.Price, candle.Timestamp, "Stop Loss", trades);
 
                         strategy.PlaceOrder(openPosition!.CloseOrder!);
                     }
                     else if (takeProfitCompareFunc())
                     {
-                        ClosePosition(openPosition.TakeProfit!.Price, candle.Timestamp, "Take Profit");
+                        ClosePosition(openPosition.TakeProfit!.Price, candle.Timestamp, "Take Profit", trades);
 
                         strategy.PlaceOrder(openPosition!.CloseOrder!);
                     }
@@ -140,10 +144,10 @@ namespace Backtester.Engine
 
             if (openPosition != null)
             {
-                ClosePosition(currentCandle.Close, currentCandle.Timestamp, "End of backtest");
+                ClosePosition(currentCandle.Close, currentCandle.Timestamp, "End of backtest", trades);
             }
 
-            return Result.Success();
+            return Result.Success(trades.AsEnumerable());
         }
 
         private void OpenPosition(EntrySignal signal, OhlcvtCandle candle)
@@ -171,7 +175,7 @@ namespace Backtester.Engine
             openPosition.PlaceStopLoss(amountToBuyBasedOnRiskSize, signal.StopLossPrice);
         }
 
-        private void ClosePosition(double price, long timestamp, string reason)
+        private void ClosePosition(double price, long timestamp, string reason, List<TradeRow> trades)
         {
             if (openPosition == null)
             {
@@ -189,12 +193,7 @@ namespace Backtester.Engine
             openPosition.Close(closeOrder, timestamp, reason);
 
             var trade = NewTradeRow();
-            SaveTradeToExcel(trade);
-        }
-
-        private void SaveTradeToExcel(TradeRow trade)
-        {
-            // Empty for now
+            trades.Add(trade);
         }
 
         private TradeRow NewTradeRow()
