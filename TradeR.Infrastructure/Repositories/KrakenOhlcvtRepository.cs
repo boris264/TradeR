@@ -1,5 +1,6 @@
 ﻿using Dapper;
 using Npgsql;
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -14,7 +15,7 @@ namespace TradeR.Infrastructure.Repositories
         private const string EnsureAssetPairExistsSql =
             "INSERT INTO kraken.asset_pairs (name) VALUES (@Name) ON CONFLICT DO NOTHING";
 
-        private static readonly string StreamAssetPairCandlesSql = """
+        private const string StreamAssetPairCandlesSql = """
             SELECT timestamp,
                    open,
                    high,
@@ -28,6 +29,18 @@ namespace TradeR.Infrastructure.Repositories
                 AND timestamp >= @From
                 AND timestamp < @To
             ORDER BY timestamp
+        """;
+
+        private const string GetAvailableAssetPairsSql = """
+            SELECT name
+            FROM kraken.asset_pairs
+        """;
+
+        private const string GetAvailableTimespanForAssetPairSql = """
+            SELECT MIN(timestamp) AS from,
+                   MAX(timestamp) AS to
+            FROM kraken.ohlcvt
+            WHERE asset_pair = @AssetPair
         """;
 
         private readonly NpgsqlDataSource dataSource;
@@ -81,6 +94,33 @@ namespace TradeR.Infrastructure.Repositories
 
                 yield return candle;
             }
+        }
+
+        public async Task<IEnumerable<KrakenAssetPair>> GetAvailableAssetPairs(CancellationToken cancellationToken)
+        {
+            await using NpgsqlConnection connection = await dataSource.OpenConnectionAsync(cancellationToken);
+            return await connection.QueryAsync<KrakenAssetPair>(new CommandDefinition(
+                GetAvailableAssetPairsSql,
+                cancellationToken: cancellationToken));
+        }
+
+        public async Task<(DateTime from, DateTime to)> GetAvailableTimespanForAssetPair(
+            string assetPair,
+            CancellationToken cancellationToken)
+        {
+            await using NpgsqlConnection connection = await dataSource.OpenConnectionAsync(cancellationToken);
+            var timestamps = await connection.QueryFirstAsync<(long from, long to)>(new CommandDefinition(
+                GetAvailableTimespanForAssetPairSql,
+                new
+                {
+                    AssetPair = assetPair
+                },
+                cancellationToken: cancellationToken));
+
+            return (
+                DateTimeOffset.FromUnixTimeSeconds(timestamps.from).ToUniversalTime().Date,
+                DateTimeOffset.FromUnixTimeSeconds(timestamps.to).ToUniversalTime().Date
+            );
         }
     }
 }

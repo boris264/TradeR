@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using TradeR.Infrastructure.Models.Db;
@@ -33,6 +34,13 @@ namespace TradeR.Infrastructure.Repositories.Interfaces
             long from,
             long to,
             int interval,
+            CancellationToken cancellationToken);
+
+        Task<IEnumerable<KrakenAssetPair>> GetAvailableAssetPairs(
+            CancellationToken cancellationToken);
+
+        Task<(DateTime from, DateTime to)> GetAvailableTimespanForAssetPair(
+            string assetPair,
             CancellationToken cancellationToken);
     }
 }

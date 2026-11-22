@@ -8,6 +8,7 @@ namespace Backtester.Engine
     {
         public EngineConfiguration(
             string assetPair,
+            string strategyName,
             DateTime from,
             DateTime to,
             MarketInterval interval,
@@ -15,6 +16,7 @@ namespace Backtester.Engine
             double initialBalance = 5000.0)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(assetPair, nameof(assetPair));
+            ArgumentException.ThrowIfNullOrWhiteSpace(strategyName, nameof(strategyName));
             ArgumentException.ThrowIfNotUtc(from, nameof(from));
             ArgumentException.ThrowIfNotUtc(to, nameof(to));
 
@@ -23,13 +25,16 @@ namespace Backtester.Engine
             ArgumentOutOfRangeException.ThrowIfLessThan(riskSize, 0);
 
             AssetPair = assetPair;
+            StrategyName = strategyName;
             From = from;
             To = to;
             Interval = interval;
             InitialBalance = initialBalance;
             RiskSize = riskSize;
         }
-        public required string AssetPair { get; init; }
+        public string AssetPair { get; init; }
+
+        public string StrategyName { get; init; }
 
         public DateTime From { get; init; }
 

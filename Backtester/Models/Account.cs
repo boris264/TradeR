@@ -4,8 +4,6 @@ namespace Backtester.Models
 {
     internal class Account
     {
-        public string? Name { get; init; }
-
         public double Balance { get; set; }
 
         /// <summary>
