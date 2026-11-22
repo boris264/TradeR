@@ -4,7 +4,7 @@ using TradeR.SharedKernel.Extensions;
 
 namespace Backtester.Engine
 {
-    internal class EngineConfiguration
+    internal class EngineConfiguration : IEquatable<EngineConfiguration>
     {
         public EngineConfiguration(
             string assetPair,
@@ -45,5 +45,20 @@ namespace Backtester.Engine
         public double InitialBalance { get; init; }
 
         public double RiskSize { get; init; }
+
+        public bool Equals(EngineConfiguration? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+
+            return AssetPair == other.AssetPair &&
+                   StrategyName == other.StrategyName &&
+                   From == other.From &&
+                   To == other.To &&
+                   Interval == other.Interval &&
+                   RiskSize == other.RiskSize;
+        }
     }
 }

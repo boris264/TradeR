@@ -142,14 +142,23 @@ namespace Backtester.Menu
                 var initialBalance = ReadDouble("Initial account balance", 5000.0, x => x > 0);
                 var riskPercent = ReadDouble("Risk per trade (%)", null, x => x > 0 && x <= 100);
 
-                configurations.Add(new EngineConfiguration(
+                var newConfiguration = new EngineConfiguration(
                     assetPair,
                     strategyName,
                     from,
                     to,
                     interval,
                     riskPercent / 100,
-                    initialBalance));
+                    initialBalance);
+
+                if (configurations.Contains(newConfiguration))
+                {
+                    Console.WriteLine($"Backtest with these parameters already exists!");
+                }
+                else
+                {
+                    configurations.Add(newConfiguration);
+                }
             }
         }
 
