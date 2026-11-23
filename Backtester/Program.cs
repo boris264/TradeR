@@ -7,6 +7,8 @@ using Backtester.Menu.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TradeR.Infrastructure.DependencyInjection;
@@ -21,7 +23,10 @@ namespace Backtester
     {
         static async Task Main(string[] args)
         {
-            var hostBuilder = Host.CreateApplicationBuilder();
+            var hostBuilder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings()
+            {
+                ContentRootPath = AppContext.BaseDirectory
+            });
 
             hostBuilder.Configuration
                 .AddUserSecrets<Program>();
@@ -42,6 +47,18 @@ namespace Backtester
             hostBuilder.Services.AddScoped<IStrategy, MockStrategy>();
 
             var host = hostBuilder.Build();
+
+            try
+            {
+                host.Services.GetRequiredService<IStartupValidator>().Validate();
+            }
+            catch (OptionsValidationException e)
+            {
+                Console.Error.WriteLine(e.Message);
+                Environment.ExitCode = 1;
+
+                return;
+            }
 
             using var scope = host.Services.CreateScope();
 

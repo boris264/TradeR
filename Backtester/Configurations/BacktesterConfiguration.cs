@@ -4,6 +4,6 @@ namespace Backtester.Configurations
     {
         public const string SectionName = "Backtester";
 
-        public double Fee { get; set; } = 0.004;
+        public double Fee { get; set; } = 0.008;
     }
 }

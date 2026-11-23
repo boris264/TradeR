@@ -75,6 +75,7 @@ namespace Backtester.Menu
                 .Select(x => x.Name)
                 .ToList();
             var intervals = Enum.GetValues<MarketInterval>();
+            string? message = null;
 
             while (true)
             {
@@ -93,6 +94,13 @@ namespace Backtester.Menu
                             $"risk {(configuration.RiskSize * 100).ToString(CultureInfo.InvariantCulture)}%");
                     }
                     Console.WriteLine();
+                }
+
+                if (message != null)
+                {
+                    Console.WriteLine(message);
+                    Console.WriteLine();
+                    message = null;
                 }
 
                 Console.WriteLine("Select an asset pair:");
@@ -136,7 +144,7 @@ namespace Backtester.Menu
                     cancellationToken);
                 if (availableTimespan == null)
                 {
-                    Console.WriteLine($"No candles for {assetPair} at {interval}.");
+                    message = $"No candles for {assetPair} at {interval}.";
                     continue;
                 }
 
@@ -163,7 +171,7 @@ namespace Backtester.Menu
 
                 if (configurations.Contains(newConfiguration))
                 {
-                    Console.WriteLine($"Backtest with these parameters already exists!");
+                    message = "Backtest with these parameters already exists!";
                 }
                 else
                 {

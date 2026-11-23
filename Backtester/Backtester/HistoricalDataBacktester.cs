@@ -13,7 +13,6 @@ using System.Threading.Tasks;
 using TradeR.Infrastructure.Interfaces;
 using TradeR.Infrastructure.Models.Excel;
 using TradeR.Services.Strategies.Interfaces;
-using TradeR.SharedKernel.Results;
 
 namespace Backtester.Backtester
 {
@@ -50,44 +49,42 @@ namespace Backtester.Backtester
                 var producedTrades = new ConcurrentBag<TradeRow>();
                 await Parallel.ForEachAsync(engineConfigurations, applicationStoppingToken, async (e, c) =>
                 {
-                    using var scope = serviceScopeFactory.CreateScope();
-
-                    var selectedStrategy = scope.ServiceProvider
-                        .GetServices<IStrategy>()
-                        .FirstOrDefault(s => s.Name == e.StrategyName);
-
-                    if (selectedStrategy == null)
-                    {
-                        logger.LogWarning("No strategy named {StrategyName} was found, skipping backtest {Backtest}", e.StrategyName, e);
-                        return;
-                    }
-
-                    var engine = new HistoricalDataEngine(
-                        e,
-                        selectedStrategy,
-                        scope);
-
-                    Result<IEnumerable<TradeRow>> result;
                     try
                     {
-                        result = await engine.StartAsync(c);
+                        using var scope = serviceScopeFactory.CreateScope();
+
+                        var selectedStrategy = scope.ServiceProvider
+                            .GetServices<IStrategy>()
+                            .FirstOrDefault(s => s.Name == e.StrategyName);
+
+                        if (selectedStrategy == null)
+                        {
+                            logger.LogWarning("No strategy named {StrategyName} was found, skipping backtest {Backtest}", e.StrategyName, e);
+                            return;
+                        }
+
+                        var engine = new HistoricalDataEngine(
+                            e,
+                            selectedStrategy,
+                            scope);
+
+                        var result = await engine.StartAsync(c);
+
+                        if (result.IsSuccess)
+                        {
+                            result.Value.ToList().ForEach(producedTrades.Add);
+                        }
+                        else
+                        {
+                            logger.LogError(
+                                "An error occurred with backtest with the parameters {Backtest}, message: {Error}",
+                                e,
+                                result.Error);
+                        }
                     }
-                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    catch (Exception ex) when (ex is not OperationCanceledException || !c.IsCancellationRequested)
                     {
                         logger.LogError(ex, "Backtest {Backtest} failed, the other backtests continue", e);
-                        return;
-                    }
-
-                    if (result.IsSuccess)
-                    {
-                        result.Value.ToList().ForEach(producedTrades.Add);
-                    }
-                    else
-                    {
-                        logger.LogError(
-                            "An error occurred with backtest with the parameters {Backtest}, message: {Error}",
-                            e,
-                            result.Error);
                     }
                 });
 
