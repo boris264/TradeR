@@ -35,13 +35,13 @@ namespace Backtester.Engine
         public HistoricalDataEngine(
             EngineConfiguration engineConfiguration,
             IStrategy strategy,
-            IServiceProvider serviceProvider)
+            IServiceScope serviceScope)
         {
             this.engineConfiguration = engineConfiguration;
             this.strategy = strategy;
 
-            logger = serviceProvider.GetRequiredService<ILogger<HistoricalDataEngine>>();
-            marketDataLoader = serviceProvider.GetRequiredService<IMarketDataLoader>();
+            logger = serviceScope.ServiceProvider.GetRequiredService<ILogger<HistoricalDataEngine>>();
+            marketDataLoader = serviceScope.ServiceProvider.GetRequiredService<IMarketDataLoader>();
             pnLCalculator = new PnLCalculator(fee: 0.01);
 
             account = new Account()

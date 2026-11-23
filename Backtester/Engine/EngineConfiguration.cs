@@ -60,5 +60,10 @@ namespace Backtester.Engine
                    Interval == other.Interval &&
                    RiskSize == other.RiskSize;
         }
+
+        public override string ToString()
+        {
+            return $"{AssetPair}|{StrategyName}|{Interval}|{From}|{To}|{RiskSize * 100}";
+        }
     }
 }
