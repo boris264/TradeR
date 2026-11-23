@@ -1,5 +1,4 @@
 ﻿using TradeR.Services.Models.Candles;
-using TradeR.Services.Models.Market;
 using TradeR.Services.Models.Signals;
 
 namespace TradeR.Services.Strategies.Interfaces
@@ -23,11 +22,6 @@ namespace TradeR.Services.Strategies.Interfaces
         /// <param name="candle">The OHLCVT candle</param>
         /// <returns>A signal, if the strategy's conditions are met, null otherwise</returns>
         Signal? Next(OhlcvtCandle candle);
-
-        /// <summary>
-        /// Tells the strategy an order was placed
-        /// </summary>
-        /// <param name="order">Information about the order</param>
-        void PlaceOrder(Order order);
+        void ChangeState(StrategyState newState);
     }
 }

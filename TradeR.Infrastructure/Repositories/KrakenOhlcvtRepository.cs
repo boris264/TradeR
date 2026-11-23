@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using TradeR.Infrastructure.Models.Db;
 using TradeR.Infrastructure.Repositories.Interfaces;
+using TradeR.Services.Models.Market;
 
 namespace TradeR.Infrastructure.Repositories
 {
@@ -40,7 +41,8 @@ namespace TradeR.Infrastructure.Repositories
             SELECT MIN(timestamp) AS from,
                    MAX(timestamp) AS to
             FROM kraken.ohlcvt
-            WHERE asset_pair = @AssetPair
+            WHERE asset_pair = @AssetPair AND 
+                  interval_minutes = @Interval
         """;
 
         private readonly NpgsqlDataSource dataSource;
@@ -106,6 +108,7 @@ namespace TradeR.Infrastructure.Repositories
 
         public async Task<(DateTime from, DateTime to)> GetAvailableTimespanForAssetPair(
             string assetPair,
+            MarketInterval interval,
             CancellationToken cancellationToken)
         {
             await using NpgsqlConnection connection = await dataSource.OpenConnectionAsync(cancellationToken);
@@ -113,7 +116,8 @@ namespace TradeR.Infrastructure.Repositories
                 GetAvailableTimespanForAssetPairSql,
                 new
                 {
-                    AssetPair = assetPair
+                    AssetPair = assetPair,
+                    Interval = interval
                 },
                 cancellationToken: cancellationToken));
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using TradeR.Infrastructure.Models.Db;
+using TradeR.Services.Models.Market;
 
 namespace TradeR.Infrastructure.Repositories.Interfaces
 {
@@ -41,6 +42,7 @@ namespace TradeR.Infrastructure.Repositories.Interfaces
 
         Task<(DateTime from, DateTime to)> GetAvailableTimespanForAssetPair(
             string assetPair,
+            MarketInterval interval,
             CancellationToken cancellationToken);
     }
 }

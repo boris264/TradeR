@@ -12,6 +12,7 @@ using TradeR.Services.Market.Interfaces;
 using TradeR.Services.Models.Candles;
 using TradeR.Services.Models.Market;
 using TradeR.Services.Models.Signals;
+using TradeR.Services.Strategies;
 using TradeR.Services.Strategies.Interfaces;
 using TradeR.SharedKernel.Common;
 using TradeR.SharedKernel.Enums;
@@ -102,14 +103,14 @@ namespace Backtester.Engine
                         var entrySignal = currentSignal as EntrySignal;
                         OpenPosition(entrySignal!, candle);
 
-                        strategy.PlaceOrder(openPosition!.OpenOrder);
+                        strategy.ChangeState(StrategyState.PositionOpened);
                     }
                     else
                     {
                         var exitSignal = currentSignal as ExitSignal;
                         ClosePosition(candle.Close, candle.Timestamp, exitSignal!.Reason, trades);
 
-                        strategy.PlaceOrder(openPosition!.CloseOrder!);
+                        strategy.ChangeState(StrategyState.Idle);
                     }
                 }
 
@@ -117,24 +118,24 @@ namespace Backtester.Engine
                 {
                     bool takeProfitCompareFunc() => openPosition.TakeProfit != null &&
                               (openPosition.Direction == PositionDirection.Long
-                                   ? openPosition.TakeProfit.Price >= candle.Open
-                                   : openPosition.TakeProfit.Price <= candle.Open);
+                                   ? candle.Open >= openPosition.TakeProfit.Price
+                                   : candle.Open <= openPosition.TakeProfit.Price);
                     bool stopLossCompareFunc() => openPosition.StopLoss != null &&
                               (openPosition.Direction == PositionDirection.Long
-                                   ? openPosition.StopLoss.Price <= candle.Open
-                                   : openPosition.StopLoss.Price >= candle.Open);
+                                   ? candle.Open <= openPosition.StopLoss.Price
+                                   : candle.Open >= openPosition.StopLoss.Price);
 
                     if (stopLossCompareFunc())
                     {
                         ClosePosition(openPosition.StopLoss!.Price, candle.Timestamp, "Stop Loss", trades);
 
-                        strategy.PlaceOrder(openPosition!.CloseOrder!);
+                        strategy.ChangeState(StrategyState.Idle);
                     }
                     else if (takeProfitCompareFunc())
                     {
                         ClosePosition(openPosition.TakeProfit!.Price, candle.Timestamp, "Take Profit", trades);
 
-                        strategy.PlaceOrder(openPosition!.CloseOrder!);
+                        strategy.ChangeState(StrategyState.Idle);
                     }
                 }
 
@@ -194,6 +195,8 @@ namespace Backtester.Engine
 
             var trade = NewTradeRow();
             trades.Add(trade);
+
+            openPosition = null;
         }
 
         private TradeRow NewTradeRow()
@@ -204,6 +207,11 @@ namespace Backtester.Engine
                 openPosition.CloseOrder!.Price,
                 openPosition.CloseOrder.Amount,
                 openPosition.Direction);
+            var fees = pnLCalculator.CalculateFees(
+                openPosition!.OpenOrder.Price,
+                openPosition.OpenOrder.Amount,
+                openPosition.CloseOrder!.Price,
+                openPosition.CloseOrder.Amount);
 
             return new TradeRow()
             {
@@ -216,14 +224,15 @@ namespace Backtester.Engine
                 BuyPrice = openPosition.OpenOrder.Price,
                 SellPrice = openPosition.CloseOrder.Price,
                 PnL = pnl,
+                Fees = fees,
                 OpenTime = DateTimeOffset
                     .FromUnixTimeSeconds(openPosition.OpenTimestamp)
                     .ToUniversalTime()
-                    .Date,
+                    .DateTime,
                 CloseTime = DateTimeOffset
                     .FromUnixTimeSeconds(openPosition.CloseTimestamp)
                     .ToUniversalTime()
-                    .Date,
+                    .DateTime,
                 EntryReason = openPosition.EntryReason,
                 ExitReason = openPosition.ExitReason ?? string.Empty,
                 AccountSize = account.Balance,

@@ -1,4 +1,5 @@
 ﻿using Backtester.Engine;
+using Backtester.Menu.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -11,7 +12,7 @@ using TradeR.Services.Strategies.Interfaces;
 
 namespace Backtester.Menu
 {
-    internal class BacktestingMenu
+    internal class BacktestingMenu : IMenu<IEnumerable<EngineConfiguration>>
     {
         private const string menuHeader = """
   |                 _____                   _        ____
@@ -42,7 +43,7 @@ namespace Backtester.Menu
             this.strategies = strategies;
         }
 
-        public async Task<IEnumerable<EngineConfiguration>> PrepareBacktest(CancellationToken cancellationToken)
+        public async Task<IEnumerable<EngineConfiguration>> Prompt(CancellationToken cancellationToken)
         {
             Console.Write(menuHeader);
             Console.WriteLine(string.Format(mainMenuOptionsTemplate, BuildOptions("Exit", "Run Backtest")));
@@ -116,16 +117,6 @@ namespace Backtester.Menu
 
                 var strategyName = strategyNames[strategyIndex - 1];
 
-                var availableTimespan = await krakenOhlcvtRepository.GetAvailableTimespanForAssetPair(assetPair, cancellationToken);
-                var firstAvailableDate = DateTime.SpecifyKind(availableTimespan.from, DateTimeKind.Utc);
-                var lastAvailableDate = DateTime.SpecifyKind(availableTimespan.to, DateTimeKind.Utc);
-                var endOfAvailableData = lastAvailableDate.AddDays(1);
-
-                Console.WriteLine($"Available data: {firstAvailableDate:yyyy-MM-dd} to {lastAvailableDate:yyyy-MM-dd}");
-
-                var from = ReadDate("From", firstAvailableDate, firstAvailableDate, lastAvailableDate);
-                var to = ReadDate("To (exclusive)", endOfAvailableData, from.AddDays(1), endOfAvailableData);
-
                 Console.WriteLine("Select an interval:");
                 Console.WriteLine(string.Format(
                     mainMenuOptionsTemplate,
@@ -138,6 +129,19 @@ namespace Backtester.Menu
                 }
 
                 var interval = intervals[intervalIndex - 1];
+
+                var availableTimespan = await krakenOhlcvtRepository.GetAvailableTimespanForAssetPair(
+                    assetPair,
+                    interval,
+                    cancellationToken);
+                var firstAvailableDate = DateTime.SpecifyKind(availableTimespan.from, DateTimeKind.Utc);
+                var lastAvailableDate = DateTime.SpecifyKind(availableTimespan.to, DateTimeKind.Utc);
+                var endOfAvailableData = lastAvailableDate.AddDays(1);
+
+                Console.WriteLine($"Available data: {firstAvailableDate:yyyy-MM-dd} to {lastAvailableDate:yyyy-MM-dd}");
+
+                var from = ReadDate("From", firstAvailableDate, firstAvailableDate, lastAvailableDate);
+                var to = ReadDate("To (exclusive)", endOfAvailableData, from.AddDays(1), endOfAvailableData);
 
                 var initialBalance = ReadDouble("Initial account balance", 5000.0, x => x > 0);
                 var riskPercent = ReadDouble("Risk per trade (%)", null, x => x > 0 && x <= 100);

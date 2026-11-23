@@ -1,10 +1,18 @@
-﻿using Backtester.Menu;
+﻿using Backtester.Backtester;
+using Backtester.Backtester.Interfaces;
+using Backtester.Engine;
+using Backtester.Menu;
+using Backtester.Menu.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System.Threading;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using TradeR.Infrastructure.DependencyInjection;
+using TradeR.Services.Market;
+using TradeR.Services.Market.Interfaces;
+using TradeR.Services.Strategies;
+using TradeR.Services.Strategies.Interfaces;
 
 namespace Backtester
 {
@@ -18,15 +26,19 @@ namespace Backtester
                 .AddUserSecrets<Program>();
 
             hostBuilder.Services.AddInfrastructureServices(hostBuilder.Configuration);
-            hostBuilder.Services.AddSingleton<BacktestingMenu>();
+            hostBuilder.Services.AddSingleton<IMenu<IEnumerable<EngineConfiguration>>, BacktestingMenu>();
+            hostBuilder.Services.AddScoped<IBacktester, HistoricalDataBacktester>();
+            hostBuilder.Services.AddScoped<IMarketDataLoader, MarketDataLoader>();
+
+            hostBuilder.Services.AddScoped<IStrategy, MockStrategy>();
 
             var host = hostBuilder.Build();
 
             using var scope = host.Services.CreateScope();
 
-            var menu = scope.ServiceProvider.GetRequiredService<BacktestingMenu>();
+            var historicalBacktester = scope.ServiceProvider.GetRequiredService<IBacktester>();
 
-            await menu.PrepareBacktest(CancellationToken.None);
+            await historicalBacktester.RunAsync();
         }
     }
 }

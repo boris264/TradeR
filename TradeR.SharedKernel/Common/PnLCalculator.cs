@@ -57,5 +57,32 @@ namespace TradeR.SharedKernel.Common
 
             return pnLBeforeFees - fees;
         }
+
+        public double CalculateFees(
+            double openingPrice,
+            double openPositionSize,
+            double closingPrice,
+            double closingPositionSize)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(openingPrice);
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(openPositionSize);
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(closingPrice);
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(closingPositionSize);
+
+            if (closingPositionSize > openPositionSize)
+            {
+                throw new ArgumentException(
+                    "Cannot close more coins than the position was opened with.",
+                    nameof(closingPositionSize));
+            }
+
+            // Only the closed coins count: their share of the opening order, and the closing order.
+            double openingValue = closingPositionSize * openingPrice;
+            double closingValue = closingPositionSize * closingPrice;
+
+            double fees = fee * (openingValue + closingValue);
+
+            return fees;
+        }
     }
 }

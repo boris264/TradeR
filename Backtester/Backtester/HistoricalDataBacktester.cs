@@ -1,6 +1,8 @@
 ﻿using Backtester.Backtester.Interfaces;
 using Backtester.Engine;
+using Backtester.Menu.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
@@ -16,31 +18,39 @@ namespace Backtester.Backtester
 {
     internal class HistoricalDataBacktester : IBacktester
     {
+        private readonly CancellationToken applicationStoppingToken;
+
         private readonly ITradeWriter tradeWriter;
         private readonly ILogger<HistoricalDataBacktester> logger;
         private readonly IEnumerable<IStrategy> strategies;
         private readonly IServiceScopeFactory serviceScopeFactory;
+        private readonly IMenu<IEnumerable<EngineConfiguration>> menu;
 
         public HistoricalDataBacktester(
             ITradeWriter tradeWriter,
             ILogger<HistoricalDataBacktester> logger,
             IEnumerable<IStrategy> strategies,
-            IServiceScopeFactory serviceScopeFactory)
+            IServiceScopeFactory serviceScopeFactory,
+            IHostApplicationLifetime hostApplicationLifetime,
+            IMenu<IEnumerable<EngineConfiguration>> menu)
         {
             this.tradeWriter = tradeWriter;
             this.logger = logger;
             this.strategies = strategies;
             this.serviceScopeFactory = serviceScopeFactory;
+            this.menu = menu;
+
+            applicationStoppingToken = hostApplicationLifetime.ApplicationStopping;
         }
 
-        public async Task RunAsync(
-            IEnumerable<EngineConfiguration> engineConfigurations,
-            CancellationToken cancellationToken)
+        public async Task RunAsync()
         {
             try
             {
+                var engineConfigurations = await menu.Prompt(applicationStoppingToken);
+
                 var producedTrades = new ConcurrentBag<TradeRow>();
-                await Parallel.ForEachAsync(engineConfigurations, cancellationToken, async (e, c) =>
+                await Parallel.ForEachAsync(engineConfigurations, applicationStoppingToken, async (e, c) =>
                 {
                     using var scope = serviceScopeFactory.CreateScope();
 
@@ -71,7 +81,13 @@ namespace Backtester.Backtester
                     }
                 });
 
-                var saveResult = await tradeWriter.SaveTrades($"Backtest-{DateTime.Now}.xlsx", producedTrades);
+                if (producedTrades.Count == 0)
+                {
+                    logger.LogInformation("No trades were generated from the selected backtests.");
+                    return;
+                }
+
+                var saveResult = await tradeWriter.SaveTrades($"Backtest-{DateTime.Now:HH_mm_dd-MM-yyyy}.xlsx", producedTrades);
 
                 if (saveResult.IsFailure)
                 {

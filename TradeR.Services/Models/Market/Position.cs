@@ -42,7 +42,7 @@ namespace TradeR.Services.Models.Market
                 throw new ArgumentException("Closing a Long position requires a Sell order!", nameof(closeOrder));
             }
 
-            if (OpenTimestamp < timestamp)
+            if (OpenTimestamp > timestamp)
             {
                 throw new ArgumentException(
                     "Opening timestamp of the position cannot be less than the closing timestamp",
