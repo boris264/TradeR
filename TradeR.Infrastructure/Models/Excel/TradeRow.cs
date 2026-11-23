@@ -20,9 +20,9 @@ namespace TradeR.Infrastructure.Models.Excel
 
         public string? Currency { get; set; }
 
-        public double BuyPrice { get; set; }
+        public double OpenPrice { get; set; }
 
-        public double SellPrice { get; set; }
+        public double ClosePrice { get; set; }
 
         public double Fees { get; set; }
 

@@ -1,5 +1,6 @@
 ﻿using Backtester.Backtester;
 using Backtester.Backtester.Interfaces;
+using Backtester.Configurations;
 using Backtester.Engine;
 using Backtester.Menu;
 using Backtester.Menu.Interfaces;
@@ -24,6 +25,14 @@ namespace Backtester
 
             hostBuilder.Configuration
                 .AddUserSecrets<Program>();
+
+            hostBuilder.Services
+                .AddOptions<BacktesterConfiguration>()
+                .Bind(hostBuilder.Configuration.GetSection(BacktesterConfiguration.SectionName))
+                .Validate(
+                    settings => settings.Fee > 0 && settings.Fee <= 1,
+                    $"{BacktesterConfiguration.SectionName}:Fee must be greater than 0 and at most 1.")
+                .ValidateOnStart();
 
             hostBuilder.Services.AddInfrastructureServices(hostBuilder.Configuration);
             hostBuilder.Services.AddSingleton<IMenu<IEnumerable<EngineConfiguration>>, BacktestingMenu>();

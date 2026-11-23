@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Backtester\Backtester.csproj" />
     <ProjectReference Include="..\TradeR.SharedKernel\TradeR.SharedKernel.csproj" />
   </ItemGroup>
 

@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using TradeR.Infrastructure.Interfaces;
 using TradeR.Infrastructure.Models.Excel;
 using TradeR.Services.Strategies.Interfaces;
+using TradeR.SharedKernel.Results;
 
 namespace Backtester.Backtester
 {
@@ -22,21 +23,18 @@ namespace Backtester.Backtester
 
         private readonly ITradeWriter tradeWriter;
         private readonly ILogger<HistoricalDataBacktester> logger;
-        private readonly IEnumerable<IStrategy> strategies;
         private readonly IServiceScopeFactory serviceScopeFactory;
         private readonly IMenu<IEnumerable<EngineConfiguration>> menu;
 
         public HistoricalDataBacktester(
             ITradeWriter tradeWriter,
             ILogger<HistoricalDataBacktester> logger,
-            IEnumerable<IStrategy> strategies,
             IServiceScopeFactory serviceScopeFactory,
             IHostApplicationLifetime hostApplicationLifetime,
             IMenu<IEnumerable<EngineConfiguration>> menu)
         {
             this.tradeWriter = tradeWriter;
             this.logger = logger;
-            this.strategies = strategies;
             this.serviceScopeFactory = serviceScopeFactory;
             this.menu = menu;
 
@@ -54,10 +52,13 @@ namespace Backtester.Backtester
                 {
                     using var scope = serviceScopeFactory.CreateScope();
 
-                    var selectedStrategy = strategies.FirstOrDefault(s => s.Name == e.StrategyName);
+                    var selectedStrategy = scope.ServiceProvider
+                        .GetServices<IStrategy>()
+                        .FirstOrDefault(s => s.Name == e.StrategyName);
 
                     if (selectedStrategy == null)
                     {
+                        logger.LogWarning("No strategy named {StrategyName} was found, skipping backtest {Backtest}", e.StrategyName, e);
                         return;
                     }
 
@@ -66,7 +67,16 @@ namespace Backtester.Backtester
                         selectedStrategy,
                         scope);
 
-                    var result = await engine.StartAsync(c);
+                    Result<IEnumerable<TradeRow>> result;
+                    try
+                    {
+                        result = await engine.StartAsync(c);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        logger.LogError(ex, "Backtest {Backtest} failed, the other backtests continue", e);
+                        return;
+                    }
 
                     if (result.IsSuccess)
                     {

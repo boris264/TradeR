@@ -40,7 +40,7 @@ namespace TradeR.Infrastructure.Repositories.Interfaces
         Task<IEnumerable<KrakenAssetPair>> GetAvailableAssetPairs(
             CancellationToken cancellationToken);
 
-        Task<(DateTime from, DateTime to)> GetAvailableTimespanForAssetPair(
+        Task<(DateTime from, DateTime to)?> GetAvailableTimespanForAssetPair(
             string assetPair,
             MarketInterval interval,
             CancellationToken cancellationToken);

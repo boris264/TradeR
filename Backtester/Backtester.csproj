@@ -15,6 +15,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="TradeR.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\TradeR.Infrastructure\TradeR.Infrastructure.csproj" />
     <ProjectReference Include="..\TradeR.Services\TradeR.Services.csproj" />
   </ItemGroup>

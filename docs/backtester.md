@@ -79,8 +79,8 @@ The editable source, which also has the System Context and Containers pages, is 
 | Coin amount | How many coins were bought or sold |
 | Bought amount | The cost in the quote currency |
 | Currency | The quote currency of the pair (EUR, CHF, USD), so results in different currencies aren't added together |
-| Buy price | Price per coin of the buy order |
-| Sell price | Price per coin of the sell order |
+| Open price | Price per coin when the position was opened |
+| Close price | Price per coin when the position was closed |
 | Fees | Total fees of all executed orders of the trade (open + close) |
 | P&L | Profit or loss, including the fees, in the pair's currency |
 | Open time | When the position was opened (UTC) |
@@ -117,7 +117,9 @@ Hold time is calculated in the template from the open and close times.
 - **Stop loss and take profit fills:** they fill **at their own price** (the stop price or the take profit price) as soon as a candle's low or high reaches it:
   - Long: the stop loss fills when the candle's low reaches the stop; the take profit when the candle's high reaches the target.
   - Short: the stop loss fills when the candle's high reaches the stop; the take profit when the candle's low reaches the target.
-- **Fees:** the fee is passed to the generic P&L calculator (SharedKernel) when it's created. The Backtester passes Kraken's fee.
+- **Entries past the stop are skipped:** if the next candle's open is already at or past the entry's stop loss (below it for a long, above it for a short), the entry isn't taken.
+- **Position size:** the risk amount (current balance × risk per trade) divided by the distance between the fill price and the stop loss. It's capped so the position's value plus the opening fee never exceeds the current balance. The current balance is the initial balance plus the P&L of the run's closed trades.
+- **Fees:** the fee is passed to the generic P&L calculator (SharedKernel) when it's created. It comes from the `Backtester:Fee` setting in `appsettings.json`, which defaults to Kraken's 0.4% taker fee.
 - **Slippage:** ignored.
 
 ## Data

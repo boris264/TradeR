@@ -42,10 +42,15 @@ namespace TradeR.Services.Models.Market
                 throw new ArgumentException("Closing a Long position requires a Sell order!", nameof(closeOrder));
             }
 
+            if (Direction == PositionDirection.Short && closeOrder.Type != OrderType.Buy)
+            {
+                throw new ArgumentException("Closing a Short position requires a Buy order!", nameof(closeOrder));
+            }
+
             if (OpenTimestamp > timestamp)
             {
                 throw new ArgumentException(
-                    "Opening timestamp of the position cannot be less than the closing timestamp",
+                    "The closing timestamp cannot be earlier than the opening timestamp",
                     nameof(timestamp));
             }
 

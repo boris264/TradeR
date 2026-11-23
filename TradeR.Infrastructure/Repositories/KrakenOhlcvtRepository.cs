@@ -106,13 +106,13 @@ namespace TradeR.Infrastructure.Repositories
                 cancellationToken: cancellationToken));
         }
 
-        public async Task<(DateTime from, DateTime to)> GetAvailableTimespanForAssetPair(
+        public async Task<(DateTime from, DateTime to)?> GetAvailableTimespanForAssetPair(
             string assetPair,
             MarketInterval interval,
             CancellationToken cancellationToken)
         {
             await using NpgsqlConnection connection = await dataSource.OpenConnectionAsync(cancellationToken);
-            var timestamps = await connection.QueryFirstAsync<(long from, long to)>(new CommandDefinition(
+            var timestamps = await connection.QueryFirstAsync<(long? from, long? to)>(new CommandDefinition(
                 GetAvailableTimespanForAssetPairSql,
                 new
                 {
@@ -121,9 +121,14 @@ namespace TradeR.Infrastructure.Repositories
                 },
                 cancellationToken: cancellationToken));
 
+            if (timestamps.from == null || timestamps.to == null)
+            {
+                return null;
+            }
+
             return (
-                DateTimeOffset.FromUnixTimeSeconds(timestamps.from).ToUniversalTime().Date,
-                DateTimeOffset.FromUnixTimeSeconds(timestamps.to).ToUniversalTime().Date
+                DateTimeOffset.FromUnixTimeSeconds(timestamps.from.Value).ToUniversalTime().Date,
+                DateTimeOffset.FromUnixTimeSeconds(timestamps.to.Value).ToUniversalTime().Date
             );
         }
     }

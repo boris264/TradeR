@@ -1,7 +1,9 @@
-﻿using Backtester.Engine.Interfaces;
+﻿using Backtester.Configurations;
+using Backtester.Engine.Interfaces;
 using Backtester.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,6 +32,7 @@ namespace Backtester.Engine
         private readonly IStrategy strategy;
         private readonly ILogger<HistoricalDataEngine> logger;
         private readonly PnLCalculator pnLCalculator;
+        private readonly double fee;
 
         public string AssetPair => engineConfiguration.AssetPair;
 
@@ -43,7 +46,8 @@ namespace Backtester.Engine
 
             logger = serviceScope.ServiceProvider.GetRequiredService<ILogger<HistoricalDataEngine>>();
             marketDataLoader = serviceScope.ServiceProvider.GetRequiredService<IMarketDataLoader>();
-            pnLCalculator = new PnLCalculator(fee: 0.01);
+            fee = serviceScope.ServiceProvider.GetRequiredService<IOptions<BacktesterConfiguration>>().Value.Fee;
+            pnLCalculator = new PnLCalculator(fee);
 
             account = new Account()
             {
@@ -98,17 +102,20 @@ namespace Backtester.Engine
                 if (currentSignal != null)
                 {
                     var signalType = currentSignal.Type;
-                    if (signalType == SignalType.Entry)
+                    if (signalType == SignalType.Entry && openPosition == null)
                     {
-                        var entrySignal = currentSignal as EntrySignal;
-                        OpenPosition(entrySignal!, candle);
+                        var entrySignal = (EntrySignal)currentSignal;
+                        if (CanOpenPosition(entrySignal, candle))
+                        {
+                            OpenPosition(entrySignal, candle);
 
-                        strategy.ChangeState(StrategyState.PositionOpened);
+                            strategy.ChangeState(StrategyState.PositionOpened);
+                        }
                     }
-                    else
+                    else if (signalType == SignalType.Exit && openPosition != null)
                     {
                         var exitSignal = currentSignal as ExitSignal;
-                        ClosePosition(candle.Close, candle.Timestamp, exitSignal!.Reason, trades);
+                        ClosePosition(candle.Open, candle.Timestamp, exitSignal!.Reason, trades);
 
                         strategy.ChangeState(StrategyState.Idle);
                     }
@@ -118,12 +125,12 @@ namespace Backtester.Engine
                 {
                     bool takeProfitCompareFunc() => openPosition.TakeProfit != null &&
                               (openPosition.Direction == PositionDirection.Long
-                                   ? candle.Open >= openPosition.TakeProfit.Price
-                                   : candle.Open <= openPosition.TakeProfit.Price);
+                                   ? (candle.Open >= openPosition.TakeProfit.Price || candle.High >= openPosition.TakeProfit.Price)
+                                   : candle.Open <= openPosition.TakeProfit.Price || candle.Low <= openPosition.TakeProfit.Price);
                     bool stopLossCompareFunc() => openPosition.StopLoss != null &&
                               (openPosition.Direction == PositionDirection.Long
-                                   ? candle.Open <= openPosition.StopLoss.Price
-                                   : candle.Open >= openPosition.StopLoss.Price);
+                                   ? (candle.Open <= openPosition.StopLoss.Price || candle.Low <= openPosition.StopLoss.Price)
+                                   : (candle.Open >= openPosition.StopLoss.Price || candle.High >= openPosition.StopLoss.Price));
 
                     if (stopLossCompareFunc())
                     {
@@ -151,15 +158,46 @@ namespace Backtester.Engine
             return Result.Success(trades.AsEnumerable());
         }
 
+        private bool CanOpenPosition(EntrySignal signal, OhlcvtCandle candle)
+        {
+            if (account.Balance <= 0)
+            {
+                logger.LogInformation(
+                    "Entry at {Timestamp} skipped: the account balance is {Balance}",
+                    candle.Timestamp,
+                    account.Balance);
+
+                return false;
+            }
+
+            var fillIsPastStop = signal.Direction == PositionDirection.Long
+                                     ? candle.Open <= signal.StopLossPrice
+                                     : candle.Open >= signal.StopLossPrice;
+            if (fillIsPastStop)
+            {
+                logger.LogInformation(
+                    "Entry at {Timestamp} skipped: the fill price {Price} is already past the stop loss {StopLoss}",
+                    candle.Timestamp,
+                    candle.Open,
+                    signal.StopLossPrice);
+
+                return false;
+            }
+
+            return true;
+        }
+
         private void OpenPosition(EntrySignal signal, OhlcvtCandle candle)
         {
             var amountToBuyBasedOnRiskSize = Math.Abs(account.RiskAmount / (candle.Open - signal.StopLossPrice));
+            var maxAmountAffordable = account.Balance / (candle.Open * (1 + fee));
+            var amountToBuy = Math.Min(amountToBuyBasedOnRiskSize, maxAmountAffordable);
             var mainOrder = new Order()
             {
                 Type = signal.Direction == PositionDirection.Long
                            ? OrderType.Buy
                            : OrderType.Sell,
-                Amount = amountToBuyBasedOnRiskSize,
+                Amount = amountToBuy,
                 Price = candle.Open
             };
             openPosition = new Position(
@@ -170,10 +208,10 @@ namespace Backtester.Engine
 
             if (signal.TakeProfitPrice != null)
             {
-                openPosition.PlaceTakeProfit(amountToBuyBasedOnRiskSize, signal.TakeProfitPrice.Value);
+                openPosition.PlaceTakeProfit(amountToBuy, signal.TakeProfitPrice.Value);
             }
 
-            openPosition.PlaceStopLoss(amountToBuyBasedOnRiskSize, signal.StopLossPrice);
+            openPosition.PlaceStopLoss(amountToBuy, signal.StopLossPrice);
         }
 
         private void ClosePosition(double price, long timestamp, string reason, List<TradeRow> trades)
@@ -212,6 +250,19 @@ namespace Backtester.Engine
                 openPosition.OpenOrder.Amount,
                 openPosition.CloseOrder!.Price,
                 openPosition.CloseOrder.Amount);
+            var openTime = DateTimeOffset
+                .FromUnixTimeSeconds(openPosition.OpenTimestamp)
+                .ToUniversalTime()
+                .DateTime;
+            var closeTime = DateTimeOffset
+                .FromUnixTimeSeconds(openPosition.CloseTimestamp)
+                .ToUniversalTime()
+                .DateTime;
+
+            openTime = DateTime.SpecifyKind(openTime, DateTimeKind.Utc);
+            closeTime = DateTime.SpecifyKind(closeTime, DateTimeKind.Utc);
+
+            account.Balance += pnl;
 
             return new TradeRow()
             {
@@ -221,21 +272,15 @@ namespace Backtester.Engine
                 Position = openPosition.Direction,
                 CoinAmount = openPosition.OpenOrder.Amount,
                 BoughtAmount = openPosition.OpenOrder.Amount * openPosition.OpenOrder.Price,
-                BuyPrice = openPosition.OpenOrder.Price,
-                SellPrice = openPosition.CloseOrder.Price,
+                OpenPrice = openPosition.OpenOrder.Price,
+                ClosePrice = openPosition.CloseOrder.Price,
                 PnL = pnl,
                 Fees = fees,
-                OpenTime = DateTimeOffset
-                    .FromUnixTimeSeconds(openPosition.OpenTimestamp)
-                    .ToUniversalTime()
-                    .DateTime,
-                CloseTime = DateTimeOffset
-                    .FromUnixTimeSeconds(openPosition.CloseTimestamp)
-                    .ToUniversalTime()
-                    .DateTime,
+                OpenTime = openTime,
+                CloseTime = closeTime,
                 EntryReason = openPosition.EntryReason,
                 ExitReason = openPosition.ExitReason ?? string.Empty,
-                AccountSize = account.Balance,
+                AccountSize = engineConfiguration.InitialBalance,
             };
         }
     }

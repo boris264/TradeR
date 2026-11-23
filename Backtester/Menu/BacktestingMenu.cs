@@ -134,8 +134,14 @@ namespace Backtester.Menu
                     assetPair,
                     interval,
                     cancellationToken);
-                var firstAvailableDate = DateTime.SpecifyKind(availableTimespan.from, DateTimeKind.Utc);
-                var lastAvailableDate = DateTime.SpecifyKind(availableTimespan.to, DateTimeKind.Utc);
+                if (availableTimespan == null)
+                {
+                    Console.WriteLine($"No candles for {assetPair} at {interval}.");
+                    continue;
+                }
+
+                var firstAvailableDate = DateTime.SpecifyKind(availableTimespan.Value.from, DateTimeKind.Utc);
+                var lastAvailableDate = DateTime.SpecifyKind(availableTimespan.Value.to, DateTimeKind.Utc);
                 var endOfAvailableData = lastAvailableDate.AddDays(1);
 
                 Console.WriteLine($"Available data: {firstAvailableDate:yyyy-MM-dd} to {lastAvailableDate:yyyy-MM-dd}");
