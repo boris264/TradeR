@@ -1,3 +1,4 @@
+using System;
 using TradeR.SharedKernel.Results;
 
 namespace TradeR.SharedKernel.Indicators
@@ -13,6 +14,13 @@ namespace TradeR.SharedKernel.Indicators
         public static Error NotEnoughData(int count, int period)
         {
             return new Error("Indicators.NotEnoughData", $"At least {period} value(s) are needed for period {period}, got {count}.");
+        }
+
+        public static Error SessionOpenCloseTimeMismatch(TimeOnly sessionOpen, TimeOnly sessionClose)
+        {
+            return new Error(
+                "Indicators.SessionOpenCloseTimeMismatch",
+                $"The opening time of the session {sessionOpen} cannot be after the closing time {sessionClose}.");
         }
     }
 }
