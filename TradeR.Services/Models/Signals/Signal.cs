@@ -7,7 +7,7 @@
         /// <summary>
         /// The reason this signal was given, e.g. 2 EMA Cross
         /// </summary>
-        public string Reason { get; set; } = string.Empty;
+        public required string Reason { get; set; }
 
         protected Signal(SignalType signalType)
         {

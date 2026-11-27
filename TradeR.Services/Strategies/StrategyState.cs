@@ -3,6 +3,7 @@
     public enum StrategyState
     {
         Idle,
-        PositionOpened,
+        LongPositionOpened,
+        ShortPositionOpened,
     }
 }

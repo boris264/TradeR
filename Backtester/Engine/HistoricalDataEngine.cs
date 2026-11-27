@@ -109,14 +109,25 @@ namespace Backtester.Engine
                         {
                             OpenPosition(entrySignal, candle);
 
-                            strategy.ChangeState(StrategyState.PositionOpened);
+                            strategy.ChangeState(GetStrategyStateFromPosition(openPosition!.Direction));
+
+                            logger.LogInformation(
+                                "Opened {Direction} position using a signal from the {Strategy} strategy, reason {Reason}",
+                                openPosition.Direction,
+                                strategy.Name,
+                                entrySignal.Reason);
                         }
                     }
                     else if (signalType == SignalType.Exit && openPosition != null)
                     {
                         var exitSignal = currentSignal as ExitSignal;
-                        ClosePosition(candle.Open, candle.Timestamp, exitSignal!.Reason, trades);
+                        logger.LogInformation(
+                                "Closed {Direction} position using a signal from the {Strategy} strategy, reason {Reason}",
+                                openPosition.Direction,
+                                strategy.Name,
+                                exitSignal!.Reason);
 
+                        ClosePosition(candle.Open, candle.Timestamp, exitSignal!.Reason, trades);
                         strategy.ChangeState(StrategyState.Idle);
                     }
                 }
@@ -134,14 +145,22 @@ namespace Backtester.Engine
 
                     if (stopLossCompareFunc())
                     {
-                        ClosePosition(openPosition.StopLoss!.Price, candle.Timestamp, "Stop Loss", trades);
+                        logger.LogInformation(
+                                "Closed {Direction} position based on the stop loss price from the {Strategy} strategy",
+                                openPosition.Direction,
+                                strategy.Name);
 
+                        ClosePosition(openPosition.StopLoss!.Price, candle.Timestamp, "Stop Loss", trades);
                         strategy.ChangeState(StrategyState.Idle);
                     }
                     else if (takeProfitCompareFunc())
                     {
-                        ClosePosition(openPosition.TakeProfit!.Price, candle.Timestamp, "Take Profit", trades);
+                        logger.LogInformation(
+                                "Closed {Direction} position based on the take profit price from the {Strategy} strategy",
+                                openPosition.Direction,
+                                strategy.Name);
 
+                        ClosePosition(openPosition.TakeProfit!.Price, candle.Timestamp, "Take Profit", trades);
                         strategy.ChangeState(StrategyState.Idle);
                     }
                 }
@@ -283,5 +302,13 @@ namespace Backtester.Engine
                 AccountSize = engineConfiguration.InitialBalance,
             };
         }
+
+        private StrategyState GetStrategyStateFromPosition(PositionDirection positionDirection)
+            => positionDirection switch
+            {
+                PositionDirection.Long => StrategyState.LongPositionOpened,
+                PositionDirection.Short => StrategyState.ShortPositionOpened,
+                _ => throw new ArgumentException("Invalid value for positionDirection!", nameof(positionDirection)),
+            };
     }
 }

@@ -45,6 +45,7 @@ namespace Backtester
             hostBuilder.Services.AddScoped<IMarketDataLoader, MarketDataLoader>();
 
             hostBuilder.Services.AddScoped<IStrategy, MockStrategy>();
+            hostBuilder.Services.AddScoped<IStrategy, TwoHundredEmaFollowingStrategy>();
 
             var host = hostBuilder.Build();
 
