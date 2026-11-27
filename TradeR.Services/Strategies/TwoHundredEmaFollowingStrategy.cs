@@ -32,7 +32,10 @@ namespace TradeR.Services.Strategies
 
         public override string Name => "200 EMA Following";
 
-        public override int CandlesToPreload => 200;
+        // Preload more candles, so we can build almost the same EMA value as other platforms
+        // like Tradingview, since their charts load more than the 200 required
+        // candles
+        public override int CandlesToPreload => 1200;
 
         public TwoHundredEmaFollowingStrategy(
             ILogger<TwoHundredEmaFollowingStrategy> logger)
@@ -51,11 +54,6 @@ namespace TradeR.Services.Strategies
 
         public override Signal? Next(OhlcvtCandle candle)
         {
-            // If price wicks through the EMA and closes below/above it and we don't have a position opened
-            // open a position in that direction. Direction is determined if the closing price was less than EMA,
-            // short, if more, long. Return an entry signal with stop loss at the high/low of the candle with the wick.
-            // Observe the candles, if we have a position opened, check if the candle closed above the EMA, if it did,
-            // send an exit signal.
             var currentEma = ema.Add(candle.Close);
 
             if (currentEma == null)

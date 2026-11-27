@@ -97,73 +97,7 @@ namespace Backtester.Engine
                     continue;
                 }
 
-                // From this point, we start the actual backtest
-                // The current candle is the candle after we received the signal
-                if (currentSignal != null)
-                {
-                    var signalType = currentSignal.Type;
-                    if (signalType == SignalType.Entry && openPosition == null)
-                    {
-                        var entrySignal = (EntrySignal)currentSignal;
-                        if (CanOpenPosition(entrySignal, candle))
-                        {
-                            OpenPosition(entrySignal, candle);
-
-                            strategy.ChangeState(GetStrategyStateFromPosition(openPosition!.Direction));
-
-                            logger.LogInformation(
-                                "Opened {Direction} position using a signal from the {Strategy} strategy, reason {Reason}",
-                                openPosition.Direction,
-                                strategy.Name,
-                                entrySignal.Reason);
-                        }
-                    }
-                    else if (signalType == SignalType.Exit && openPosition != null)
-                    {
-                        var exitSignal = currentSignal as ExitSignal;
-                        logger.LogInformation(
-                                "Closed {Direction} position using a signal from the {Strategy} strategy, reason {Reason}",
-                                openPosition.Direction,
-                                strategy.Name,
-                                exitSignal!.Reason);
-
-                        ClosePosition(candle.Open, candle.Timestamp, exitSignal!.Reason, trades);
-                        strategy.ChangeState(StrategyState.Idle);
-                    }
-                }
-
-                if (openPosition != null)
-                {
-                    bool takeProfitCompareFunc() => openPosition.TakeProfit != null &&
-                              (openPosition.Direction == PositionDirection.Long
-                                   ? (candle.Open >= openPosition.TakeProfit.Price || candle.High >= openPosition.TakeProfit.Price)
-                                   : candle.Open <= openPosition.TakeProfit.Price || candle.Low <= openPosition.TakeProfit.Price);
-                    bool stopLossCompareFunc() => openPosition.StopLoss != null &&
-                              (openPosition.Direction == PositionDirection.Long
-                                   ? (candle.Open <= openPosition.StopLoss.Price || candle.Low <= openPosition.StopLoss.Price)
-                                   : (candle.Open >= openPosition.StopLoss.Price || candle.High >= openPosition.StopLoss.Price));
-
-                    if (stopLossCompareFunc())
-                    {
-                        logger.LogInformation(
-                                "Closed {Direction} position based on the stop loss price from the {Strategy} strategy",
-                                openPosition.Direction,
-                                strategy.Name);
-
-                        ClosePosition(openPosition.StopLoss!.Price, candle.Timestamp, "Stop Loss", trades);
-                        strategy.ChangeState(StrategyState.Idle);
-                    }
-                    else if (takeProfitCompareFunc())
-                    {
-                        logger.LogInformation(
-                                "Closed {Direction} position based on the take profit price from the {Strategy} strategy",
-                                openPosition.Direction,
-                                strategy.Name);
-
-                        ClosePosition(openPosition.TakeProfit!.Price, candle.Timestamp, "Take Profit", trades);
-                        strategy.ChangeState(StrategyState.Idle);
-                    }
-                }
+                ProcessCandle(candle, currentSignal, trades);
 
                 currentSignal = strategy.Next(candle);
                 currentCandle = candle;
@@ -175,6 +109,76 @@ namespace Backtester.Engine
             }
 
             return Result.Success(trades.AsEnumerable());
+        }
+
+        private void ProcessCandle(OhlcvtCandle candle, Signal? currentSignal, List<TradeRow> trades)
+        {
+            // From this point, we start the actual backtest
+            // The current candle is the candle after we received the signal
+            if (currentSignal != null)
+            {
+                var signalType = currentSignal.Type;
+                if (signalType == SignalType.Entry && openPosition == null)
+                {
+                    var entrySignal = (EntrySignal)currentSignal;
+                    if (CanOpenPosition(entrySignal, candle))
+                    {
+                        OpenPosition(entrySignal, candle);
+                        strategy.ChangeState(GetStrategyStateFromPosition(openPosition!.Direction));
+
+                        logger.LogInformation(
+                            "Opened {Direction} position using a signal from the {Strategy} strategy, reason {Reason}",
+                            openPosition.Direction,
+                            strategy.Name,
+                            entrySignal.Reason);
+                    }
+                }
+                else if (signalType == SignalType.Exit && openPosition != null)
+                {
+                    var exitSignal = currentSignal as ExitSignal;
+                    logger.LogInformation(
+                            "Closed {Direction} position using a signal from the {Strategy} strategy, reason {Reason}",
+                            openPosition.Direction,
+                            strategy.Name,
+                            exitSignal!.Reason);
+
+                    ClosePosition(candle.Open, candle.Timestamp, exitSignal!.Reason, trades);
+                    strategy.ChangeState(StrategyState.Idle);
+                }
+            }
+
+            if (openPosition != null)
+            {
+                bool takeProfitCompareFunc() => openPosition.TakeProfit != null &&
+                          (openPosition.Direction == PositionDirection.Long
+                               ? (candle.Open >= openPosition.TakeProfit.Price || candle.High >= openPosition.TakeProfit.Price)
+                               : candle.Open <= openPosition.TakeProfit.Price || candle.Low <= openPosition.TakeProfit.Price);
+                bool stopLossCompareFunc() => openPosition.StopLoss != null &&
+                          (openPosition.Direction == PositionDirection.Long
+                               ? (candle.Open <= openPosition.StopLoss.Price || candle.Low <= openPosition.StopLoss.Price)
+                               : (candle.Open >= openPosition.StopLoss.Price || candle.High >= openPosition.StopLoss.Price));
+
+                if (stopLossCompareFunc())
+                {
+                    logger.LogInformation(
+                            "Closed {Direction} position based on the stop loss price from the {Strategy} strategy",
+                            openPosition.Direction,
+                            strategy.Name);
+
+                    ClosePosition(openPosition.StopLoss!.Price, candle.Timestamp, "Stop Loss", trades);
+                    strategy.ChangeState(StrategyState.Idle);
+                }
+                else if (takeProfitCompareFunc())
+                {
+                    logger.LogInformation(
+                            "Closed {Direction} position based on the take profit price from the {Strategy} strategy",
+                            openPosition.Direction,
+                            strategy.Name);
+
+                    ClosePosition(openPosition.TakeProfit!.Price, candle.Timestamp, "Take Profit", trades);
+                    strategy.ChangeState(StrategyState.Idle);
+                }
+            }
         }
 
         private bool CanOpenPosition(EntrySignal signal, OhlcvtCandle candle)
