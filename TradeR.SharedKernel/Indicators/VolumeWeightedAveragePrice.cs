@@ -60,7 +60,7 @@ namespace TradeR.SharedKernel.Indicators
             return Vwap;
         }
 
-        public void Reset()
+        private void Reset()
         {
             cumulativeVwap = 0;
             cumulativeVolume = 0;
@@ -69,16 +69,13 @@ namespace TradeR.SharedKernel.Indicators
         private bool ShouldPriceReset(
             DateTime date)
         {
-            var dateToTime = TimeOnly.FromDateTime(date);
             var dateToDateOnly = DateOnly.FromDateTime(date);
             return anchorPoint switch
             {
-                AnchorPoint.Session => IsSession24Hours()
-                                       ? dateToDateOnly > currentDate
-                                       : (dateToTime < sessionOpen && dateToTime >= sessionClose),
+                AnchorPoint.Session => dateToDateOnly > currentDate,
                 AnchorPoint.Week => date.DayOfWeek == DayOfWeek.Monday && currentDate.DayOfWeek == DayOfWeek.Sunday,
                 AnchorPoint.Month => currentDate.Month == 12 ? date.Month < currentDate.Month : date.Month > currentDate.Month,
-                _ => throw new ArgumentException("Invalid anchor point!", nameof(anchorPoint))
+                _ => throw new ArgumentException("Invalid anchor point!")
             };
         }
 

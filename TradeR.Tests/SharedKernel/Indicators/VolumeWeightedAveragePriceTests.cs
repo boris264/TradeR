@@ -86,26 +86,13 @@ namespace TradeR.Tests.SharedKernel.Indicators
         public void Add_AddingCandlesAfterSessionCloseOnSessionWithZeroVwap_ReturnsZero()
         {
             var vwapIndicator = VolumeWeightedAveragePrice.Create(
-                sessionOpen,
+                nineThirty,
                 sixteen,
                 AnchorPoint.Session).Value;
 
             var vwapAfterSessionClose = AddSamePrices(vwapIndicator, 1, 1, DateTime.Today.AddHours(sixteen.Hour + 1));
 
             Assert.That(vwapAfterSessionClose, Is.Zero.Within(IndicatorTestData.Tolerance));
-        }
-
-        [Test]
-        public void Add_AddingCandlesBeforeSessionOpenOnNextDaySession_ReturnsZero()
-        {
-            var vwapIndicator = VolumeWeightedAveragePrice.Create(
-                nineThirty,
-                sessionClose,
-                AnchorPoint.Session).Value;
-
-            var vwapBeforeSessionOpen = AddSamePrices(vwapIndicator, 1, 1, DateTime.Today);
-
-            Assert.That(vwapBeforeSessionOpen, Is.Zero.Within(IndicatorTestData.Tolerance));
         }
 
         [Test]
@@ -198,6 +185,21 @@ namespace TradeR.Tests.SharedKernel.Indicators
             Assert.That(firstMonthVwap, Is.EqualTo(1).Within(IndicatorTestData.Tolerance));
             Assert.That(secondMonthVwapBeforeOpen, Is.EqualTo(1).Within(IndicatorTestData.Tolerance));
             Assert.That(secondMonthVwapAfterOpen, Is.EqualTo(3).Within(IndicatorTestData.Tolerance));
+        }
+
+        [Test]
+        public void Add_CandlesOnTheStartOfNewYear_ReturnsNewVwap()
+        {
+            var vwapIndicator = VolumeWeightedAveragePrice.Create(
+                sessionOpen,
+                sessionClose,
+                AnchorPoint.Month).Value;
+
+            var lastMonthVwap = AddSamePrices(vwapIndicator, 1, 5, new DateTime(2025, 12, 31));
+            var nextYearVwap = AddSamePrices(vwapIndicator, 3, 10, new DateTime(2025, 12, 31).AddDays(1));
+
+            Assert.That(lastMonthVwap, Is.EqualTo(1).Within(IndicatorTestData.Tolerance));
+            Assert.That(nextYearVwap, Is.EqualTo(3).Within(IndicatorTestData.Tolerance));
         }
 
         private static double AddSamePrices(VolumeWeightedAveragePrice vwapIndicator, double price, double volume, DateTime date)
