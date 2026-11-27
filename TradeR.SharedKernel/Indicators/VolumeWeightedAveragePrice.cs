@@ -7,6 +7,7 @@ namespace TradeR.SharedKernel.Indicators
     public sealed class VolumeWeightedAveragePrice
     {
         private readonly TimeOnly sessionOpen;
+        private readonly TimeOnly sessionClose;
         private readonly AnchorPoint anchorPoint;
 
         private DateOnly currentDate;
@@ -18,29 +19,33 @@ namespace TradeR.SharedKernel.Indicators
 
         private VolumeWeightedAveragePrice(
             TimeOnly sessionOpen,
+            TimeOnly sessionClose,
             AnchorPoint anchorPoint)
         {
             this.sessionOpen = sessionOpen;
+            this.sessionClose = sessionClose;
             this.anchorPoint = anchorPoint;
         }
 
         public static Result<VolumeWeightedAveragePrice> Create(
             TimeOnly sessionOpen,
+            TimeOnly sessionClose,
             AnchorPoint anchorPoint)
         {
-            return new VolumeWeightedAveragePrice(sessionOpen, anchorPoint);
+            return new VolumeWeightedAveragePrice(sessionOpen, sessionClose, anchorPoint);
         }
 
-        public double? Add(
+        public double Add(
             double close,
             double high,
             double low,
             double volume,
             DateTime date)
         {
-            if (cumulativeVwap == 0 && TimeOnly.FromDateTime(date) > sessionOpen)
+            var dateToTime = TimeOnly.FromDateTime(date);
+            if (!IsSession24Hours() && (dateToTime < sessionOpen || dateToTime >= sessionClose))
             {
-                throw new ArgumentException("The VWAP indicator needs the first candle at the start of the session!");
+                return cumulativeVwap == 0 ? 0 : Vwap;
             }
 
             if (ShouldPriceReset(date))
@@ -63,13 +68,21 @@ namespace TradeR.SharedKernel.Indicators
 
         private bool ShouldPriceReset(
             DateTime date)
-            => anchorPoint switch
+        {
+            var dateToTime = TimeOnly.FromDateTime(date);
+            var dateToDateOnly = DateOnly.FromDateTime(date);
+            return anchorPoint switch
             {
-                AnchorPoint.Session => DateOnly.FromDateTime(date) > currentDate &&
-                                       TimeOnly.FromDateTime(date) >= sessionOpen,
+                AnchorPoint.Session => IsSession24Hours()
+                                       ? dateToDateOnly > currentDate
+                                       : (dateToTime < sessionOpen && dateToTime >= sessionClose),
                 AnchorPoint.Week => date.DayOfWeek == DayOfWeek.Monday && currentDate.DayOfWeek == DayOfWeek.Sunday,
                 AnchorPoint.Month => currentDate.Month == 12 ? date.Month < currentDate.Month : date.Month > currentDate.Month,
                 _ => throw new ArgumentException("Invalid anchor point!", nameof(anchorPoint))
             };
+        }
+
+        private bool IsSession24Hours()
+            => sessionOpen == TimeOnly.MinValue && sessionClose == TimeOnly.MaxValue;
     }
 }
