@@ -10,8 +10,11 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using TradeR.Infrastructure.DependencyInjection;
+using TradeR.Infrastructure.Models.Dtos;
+using TradeR.Infrastructure.Repositories.Interfaces;
 using TradeR.Services.Market;
 using TradeR.Services.Market.Interfaces;
 using TradeR.Services.Strategies;
@@ -39,9 +42,16 @@ namespace Backtester
                     $"{BacktesterConfiguration.SectionName}:Fee must be greater than 0 and at most 1.")
                 .ValidateOnStart();
 
+            hostBuilder.Services
+                .AddOptions<BacktestsConfiguration>()
+                .Configure(x => hostBuilder.Configuration
+                    .GetSection(BacktestsConfiguration.SectionName)
+                    .Get<List<EngineConfiguration>>());
+
             hostBuilder.Services.AddInfrastructureServices(hostBuilder.Configuration);
             hostBuilder.Services.AddSingleton<IMenu<IEnumerable<EngineConfiguration>>, BacktestingMenu>();
-            hostBuilder.Services.AddScoped<IBacktester, HistoricalDataBacktester>();
+            hostBuilder.Services.AddSingleton<ConsoleWorker>();
+            hostBuilder.Services.AddScoped<IBacktester<EngineConfiguration>, HistoricalDataBacktester>();
             hostBuilder.Services.AddScoped<IMarketDataLoader, MarketDataLoader>();
 
             hostBuilder.Services.AddScoped<IStrategy, MockStrategy>();
@@ -63,9 +73,22 @@ namespace Backtester
 
             using var scope = host.Services.CreateScope();
 
-            var historicalBacktester = scope.ServiceProvider.GetRequiredService<IBacktester>();
+            //var consoleWorker = scope.ServiceProvider.GetRequiredService<ConsoleWorker>();
+            var repo = scope.ServiceProvider.GetRequiredService<IKrakenOhlcvtRepository>();
 
-            await historicalBacktester.RunAsync();
+            //await consoleWorker.StartAsync();
+
+            var res = await repo.GetTimeRangesForAssetPairs(
+                [
+                    new KrakenAssetPairInterval()
+                    {
+                        AssetPair = "USELESSUSD",
+                        IntervalMinutes = (int)TradeR.Services.Models.Market.MarketInterval.FifteenMinutes
+                    }
+                ],
+                CancellationToken.None);
+
+            Console.WriteLine(res.Count);
         }
     }
 }

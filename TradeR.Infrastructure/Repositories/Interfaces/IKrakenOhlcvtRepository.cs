@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using TradeR.Infrastructure.Models.Db;
+using TradeR.Infrastructure.Models.Dtos;
 using TradeR.Services.Models.Market;
 
 namespace TradeR.Infrastructure.Repositories.Interfaces
@@ -43,6 +44,14 @@ namespace TradeR.Infrastructure.Repositories.Interfaces
         Task<(DateTime from, DateTime to)?> GetAvailableTimespanForAssetPair(
             string assetPair,
             MarketInterval interval,
+            CancellationToken cancellationToken);
+
+        Task<HashSet<string>> GetAssetPairsThatDontExist(
+            IEnumerable<string> assetPairs,
+            CancellationToken cancellationToken);
+
+        Task<List<KrakenAssetPairTimeRange>> GetTimeRangesForAssetPairs(
+            IEnumerable<KrakenAssetPairInterval> assetPairs,
             CancellationToken cancellationToken);
     }
 }

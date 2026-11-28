@@ -2,10 +2,13 @@
 using Npgsql;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using TradeR.Infrastructure.Models.Db;
+using TradeR.Infrastructure.Models.Dtos;
 using TradeR.Infrastructure.Repositories.Interfaces;
 using TradeR.Services.Models.Market;
 
@@ -13,6 +16,32 @@ namespace TradeR.Infrastructure.Repositories
 {
     public class KrakenOhlcvtRepository : IKrakenOhlcvtRepository
     {
+        private static readonly JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+        };
+
+        private const string GetTimeRangesForAssetPairsSql = """
+            SELECT aptr.asset_pair AS AssetPair, 
+                   aptr.interval_minutes AS IntervalMinutes, 
+                   aptr.oldest_time AS OldestTime, 
+                   aptr.newest_time AS NewestTime
+            FROM kraken.asset_pairs_time_range AS aptr
+            JOIN (
+        	    SELECT asset_pair, 
+                       interval_minutes
+                FROM JSON_TO_RECORDSET(@AssetPairsJsonArray::json) AS (asset_pair text, interval_minutes integer)
+            ) AS j1 ON j1.asset_pair = aptr.asset_pair AND j1.interval_minutes = aptr.interval_minutes
+        """;
+
+        private const string GetAssetPairsThatDoNotExistSql = """
+            SELECT item::text
+            FROM unnest(@AssetPairs::text[]) AS input(item)
+            EXCEPT
+            SELECT name
+            FROM kraken.asset_pairs
+        """;
+
         private const string EnsureAssetPairExistsSql =
             "INSERT INTO kraken.asset_pairs (name) VALUES (@Name) ON CONFLICT DO NOTHING";
 
@@ -130,6 +159,39 @@ namespace TradeR.Infrastructure.Repositories
                 DateTimeOffset.FromUnixTimeSeconds(timestamps.from.Value).ToUniversalTime().Date,
                 DateTimeOffset.FromUnixTimeSeconds(timestamps.to.Value).ToUniversalTime().Date
             );
+        }
+
+        public async Task<HashSet<string>> GetAssetPairsThatDontExist(
+            IEnumerable<string> assetPairs,
+            CancellationToken cancellationToken)
+        {
+            await using NpgsqlConnection connection = await dataSource.OpenConnectionAsync(cancellationToken);
+            var notExistingAssetPairs = await connection.QueryAsync<string>(new CommandDefinition(
+                GetAssetPairsThatDoNotExistSql,
+                new
+                {
+                    AssetPairs = assetPairs
+                },
+                cancellationToken: cancellationToken));
+
+            return notExistingAssetPairs.ToHashSet();
+        }
+
+        public async Task<List<KrakenAssetPairTimeRange>> GetTimeRangesForAssetPairs(
+            IEnumerable<KrakenAssetPairInterval> assetPairs,
+            CancellationToken cancellationToken)
+        {
+            await using NpgsqlConnection connection = await dataSource.OpenConnectionAsync(cancellationToken);
+            var assetPairsRanges = await connection.QueryAsync<KrakenAssetPairTimeRange>(new CommandDefinition(
+                GetTimeRangesForAssetPairsSql,
+                new
+                {
+                    AssetPairsJsonArray = JsonSerializer.Serialize(assetPairs, jsonSerializerOptions),
+                },
+
+                cancellationToken: cancellationToken));
+
+            return assetPairsRanges.ToList();
         }
     }
 }
