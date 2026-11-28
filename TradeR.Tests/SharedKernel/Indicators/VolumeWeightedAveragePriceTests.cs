@@ -209,7 +209,8 @@ namespace TradeR.Tests.SharedKernel.Indicators
 
         private static DateTime Sunday(TimeOnly? time = null)
         {
-            var sunday = DateTime.Today.AddDays(-((int)DateTime.Now.DayOfWeek % 6));
+            const int sundayDay = 7;
+            var sunday = DateTime.Today.AddDays(sundayDay - (int)DateTime.Now.DayOfWeek);
 
             if (time != null)
             {
