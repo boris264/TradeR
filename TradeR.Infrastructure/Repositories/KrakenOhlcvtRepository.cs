@@ -170,7 +170,7 @@ namespace TradeR.Infrastructure.Repositories
                 GetAssetPairsThatDoNotExistSql,
                 new
                 {
-                    AssetPairs = assetPairs
+                    AssetPairs = assetPairs.ToArray(),
                 },
                 cancellationToken: cancellationToken));
 

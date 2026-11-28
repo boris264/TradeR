@@ -8,7 +8,7 @@ namespace Backtester.Configurations
     {
         public const string SectionName = "Backtests";
 
-        public List<BacktestConfiguration> Backtests { get; set; } = new List<BacktestConfiguration>();
+        public List<BacktestConfiguration> Configurations { get; set; } = new List<BacktestConfiguration>();
     }
 
     public class BacktestConfiguration

@@ -1,5 +1,13 @@
 {
-  "Backtests": [
-    
-  ]
+  "Backtests": {
+    "Configurations": [
+      {
+        "AssetPair": "USELESSUSD",
+        "StrategyName": "200 EMA Following",
+        "From": "2015-01-01",
+        "To": "2026-10-10",
+        "Interval": 15
+      }
+    ]
+  }
 }
