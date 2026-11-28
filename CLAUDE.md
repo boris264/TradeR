@@ -21,7 +21,7 @@ dotnet run --project Importer -c Release -- ohlcvt "<folder with CSVs>" [--paral
 dotnet run --project Importer -c Release -- trades "<folder with CSVs>" [--parallel N]
 ```
 
-Backtester (interactive menu, writes an Excel workbook):
+Backtester (runs the backtests listed in `Backtester/backtests.json`, or opens an interactive menu when that list is empty; writes an Excel workbook):
 
 ```bash
 dotnet user-secrets set ConnectionStrings:KrakenMarketData "Host=...;Database=...;Username=...;Password=..." --project Backtester
@@ -31,7 +31,9 @@ cd Backtester/bin/Release/net10.0 && dotnet Backtester.dll
 
 Run it from its output folder: `TradeWriter` opens `Templates/BacktestTemplate.xlsx` and saves the workbook relative to the current folder, so `dotnet run` from the repository root can't save results.
 
-The database schema is a hand-written script, `TradeR.Infrastructure/Scripts/001_initial_kraken_market_data_db_structure.sql`, run manually against PostgreSQL. There is no migration tool.
+The database schema is two hand-written scripts in `TradeR.Infrastructure/Scripts/`, run manually against PostgreSQL. There is no migration tool.
+- `001_initial_kraken_market_data_db_structure.sql` creates the schema and tables.
+- `002_add_asset_pairs_time_range_materialized_view.sql` creates the `kraken.asset_pairs_time_range` materialized view. Run it after importing, and run `REFRESH MATERIALIZED VIEW kraken.asset_pairs_time_range;` after every later import. Nothing refreshes it automatically.
 
 ## Architecture
 
@@ -39,13 +41,16 @@ Projects and dependencies (arrows point to what is referenced):
 
 - **TradeR.SharedKernel**: no dependencies. Contains the platform-independent building blocks:
   - `Results/`: `Result`, `Result<T>`, `Error`.
-  - `Indicators/`: SMA, EMA, `IndicatorErrors`.
+  - `Indicators/`: SMA, EMA, VWAP, `IndicatorErrors`.
   - `Common/PnLCalculator`: a generic P&L calculator, not tied to any exchange. The fee is passed to its constructor. A partial close pays only its share of the opening fee. Invalid input throws.
-  - `Enums/PositionDirection`: `Long`, `Short`.
+  - `Enums/`: `PositionDirection` (`Long`, `Short`) and `AnchorPoint` (`Session`, `Week`, `Month`, used by VWAP).
   - `Extensions/`: `ArgumentException.ThrowIfNotUtc`.
-- **TradeR.Services** → SharedKernel. The application core:
-  - the models: `OhlcvtCandle`, `MarketInterval` (its values are minutes), `Order`, `Position`, `EntrySignal`/`ExitSignal`;
-  - the strategies: `IStrategy`, `StrategyState`, and `MockStrategy`, the only one so far;
+- **TradeR.Services** → SharedKernel, plus `Microsoft.Extensions.Logging` for the strategies' loggers. The application core:
+  - the models: `OhlcvtCandle`, `MarketInterval` (its values are minutes), `Order`, `Position`, `EntrySignal`/`ExitSignal` (`Reason` is `required`);
+  - the strategies:
+    - `IStrategy`, and the abstract `Strategy` base class, which keeps the `state` field that `ChangeState` sets;
+    - `StrategyState`: `Idle`, `LongPositionOpened`, `ShortPositionOpened`;
+    - `MockStrategy`, a minimal one for tests, and `TwoHundredEmaFollowingStrategy`, a 200 EMA pullback strategy that preloads 1,200 candles;
   - `IMarketDataLoader`/`MarketDataLoader`, which validates the request and puts the preload candles in front of the stream;
   - `ICandleReader`, the candle source that Infrastructure implements.
 - **TradeR.Infrastructure** → Services, SharedKernel. **Everything that talks to the outside world goes here** (HTTP APIs, database, Excel). Today it holds:
@@ -53,8 +58,9 @@ Projects and dependencies (arrows point to what is referenced):
   - its DI registration, `services.AddKrakenRESTApi(configuration)`, which sets up a named `HttpClient` (`KrakenRESTApiClient.HttpClientName`) with `AddStandardResilienceHandler()` and an optional `Kraken:BaseUrl` setting;
   - `services.AddInfrastructureServices(configuration)`, which registers the data source, the repository, the candle reader and the trade writer. It throws if the `KrakenMarketData` connection string is missing;
   - `KrakenOhlcvtRepository` (Dapper) and `KrakenCandleReader`, which maps its rows to `OhlcvtCandle`;
+  - `Models/Dtos/`: `KrakenAssetPairInterval` (the repository's input when it looks up time ranges) and `KrakenAssetPairTimeRange` (its output);
   - `TradeWriter` (ClosedXML) and `Templates/BacktestTemplate.xlsx`;
-  - the SQL schema script.
+  - the SQL scripts.
 - **Importer** (console) → Infrastructure, Services. Loads Kraken's historical CSV dumps.
 - **Backtester** (console) → Infrastructure, Services. The menu, the simulation engine and the DI registration. See the Backtester section below.
 - **Layering rule:**
@@ -75,17 +81,27 @@ Projects and dependencies (arrows point to what is referenced):
 
 ### Indicators (`TradeR.SharedKernel/Indicators`)
 - They take raw `double` values, never platform models like `ApiKrakenOhlcCandle`, so they work with any data source.
-- Each indicator is a class with two ways to use it, which must give identical results (a test checks this):
+- Values must only depend on inputs up to their own index, to avoid look-ahead bias in backtests.
+
+**SMA and EMA:**
+- Each is a class with two ways to use it, which must give identical results (a test checks this):
   - `Create(period)`, then `Add(value)`, for candle-by-candle use in a backtest loop or live trading.
   - The static `Calculate(ReadOnlySpan<double>, period)` for a whole series.
 - Output is `double?`, with `null` during warm-up (the first `period - 1` values). It's never `NaN`. Batch output has the same length as the input, so index `i` always matches candle `i`.
-- Values must only depend on inputs up to their own index, to avoid look-ahead bias in backtests.
+
+**VWAP (`VolumeWeightedAveragePrice`):**
+- It's streaming only: `Create(sessionOpen, sessionClose, anchorPoint)`, then `Add(close, high, low, volume, date)`. There's no batch `Calculate` yet.
+- `Add` returns `double`, not `double?`, and `Vwap` holds the latest value.
+- It uses the typical price, (high + low + close) / 3, weighted by volume.
+- It only counts candles whose time of day is in the session range, open inclusive and close exclusive. `TimeOnly.MinValue`–`TimeOnly.MaxValue` means all day. A candle outside the range leaves the value unchanged.
+- It restarts at each new `AnchorPoint` period (session, week or month).
 
 ### Database (PostgreSQL, schema `kraken`)
 - `asset_pairs (name PK)`.
 - `order_types` and `trade_types`: seeded lookups (1 = market/limit, 1 = buy/2 = sell).
 - `ohlcvt`: identity `id` PK plus `UNIQUE (asset_pair, interval_minutes, timestamp)`.
 - `time_and_sales`: `PK (asset_pair, trade_id)`.
+- `asset_pairs_time_range`: a materialized view (script 002) with one row per `(asset_pair, interval_minutes)` and its `oldest_time` and `newest_time`. `ConsoleWorker` uses it to check `backtests.json`. It's only as current as its last `REFRESH`.
 - Timestamps are Unix seconds: `BIGINT` for candles, `DOUBLE PRECISION` for trades (they have fractional seconds).
 - The full OHLCVT import is about 100 GB. **Trades are deliberately not imported** (an estimated ~300 GB), so the Backtester is designed around OHLCVT candles only.
 
@@ -98,13 +114,25 @@ Projects and dependencies (arrows point to what is referenced):
 The command-line parser accepts option flags anywhere and rebuilds unquoted folder paths that contain spaces.
 
 ### Backtester
-The design is in `docs/backtester.md`, which covers more than what's built. Not built yet: real strategies, quote currencies (the Currency column stays empty and nothing is converted).
+The design is in `docs/backtester.md`, which covers more than what's built. Not built yet: more strategies beyond the basic 200 EMA one, quote currencies (the Currency column stays empty and nothing is converted).
 
-- **Flow:** `BacktestingMenu` returns a list of `EngineConfiguration`s. `HistoricalDataBacktester` runs each one in parallel, in its own DI scope, with its own `HistoricalDataEngine` and strategy instance, then saves all trades to one workbook.
+- **Flow:**
+  1. `Program` resolves `ConsoleWorker` and calls `StartAsync`.
+  2. When `Backtests:Configurations` (from `backtests.json`) has entries, `ConsoleWorker` checks each one:
+     - the strategy name exists;
+     - the pair is in `kraken.asset_pairs`;
+     - `From`/`To` are within the range in `kraken.asset_pairs_time_range`.
+
+     It then builds `EngineConfiguration`s from them, with `From`/`To` marked as UTC. **One invalid entry logs an error and stops them all.** When the list is empty, it prompts `BacktestingMenu` instead.
+  3. It passes the configurations to `IBacktester<EngineConfiguration>.RunAsync(configurations, token)`.
+  4. `HistoricalDataBacktester` runs each one in parallel, in its own DI scope, with its own `HistoricalDataEngine` and strategy instance, then saves all trades to one workbook.
+- **`backtests.json`** is copied to the output folder on every build (`Always`), so edit the one in `Backtester/`.
 - **A run that throws is logged and the others continue.** Only real cancellation ends everything.
-- **Strategies** are matched by `Name`, so it must be unique. To add one, implement `IStrategy` and register it in `Backtester/Program.cs` with `AddScoped<IStrategy, ...>()`. Keep it scoped: strategies are stateful and must not be shared between runs.
+- **Strategies** are matched by `Name`, so it must be unique. To add one, derive from `Strategy` and register it in `Backtester/Program.cs` with `AddScoped<IStrategy, ...>()`. Keep it scoped: strategies are stateful and must not be shared between runs.
+- **Preload:** `MarketDataLoader` streams the candles from `From − interval × CandlesToPreload` up to `From` ahead of the period. It's a time window, not a candle count, so intervals Kraken skipped (no trades) mean fewer candles.
 - **Engine rules** (mostly covered by `HistoricalDataEngineTests`):
   - Candles before `From` only feed the strategy. No trades are taken on them.
+  - After opening a position, the engine calls `strategy.ChangeState` with `LongPositionOpened` or `ShortPositionOpened`. After a signal exit, stop loss or take profit, it calls it with `Idle`.
   - Entry and exit signals fill at the next candle's open. An entry while a position is open, or an exit while flat, is ignored.
   - Stop loss and take profit fill at their own price when the candle's low or high reaches it, including on the entry candle. If one candle reaches both, the stop loss is used (not tested; an open question in the design doc).
   - An entry is skipped when its fill price is already at or past the stop, or (not tested) when the balance is zero or less.
@@ -115,7 +143,7 @@ The design is in `docs/backtester.md`, which covers more than what's built. Not 
 - **`TradeRow` property order is the Excel column order**, because `TradeWriter` inserts the rows by reflection. Changing it means changing the template's `Trades` sheet and the table in `docs/backtester.md` too.
 - **Edit the template in Excel**, not with openpyxl, which drops the Summary chart. ClosedXML keeps it when saving.
 - **Fee:** `Backtester:Fee` is a fraction charged on every order's value, 0.008 by default. It's checked at startup through `IStartupValidator`, because the host is built but never started, so `ValidateOnStart` alone does nothing.
-- **Settings order:** `appsettings.json` (copied to the output folder), then environment variables, then user secrets, which win.
+- **Settings order:** `appsettings.json` (copied to the output folder), then environment variables, then user secrets, then `backtests.json` (optional), which is added last and wins.
 - **Dates are UTC.** `EngineConfiguration`, `MarketDataLoadRequest` and the candle reader reject any other `DateTimeKind`. The period is `From` inclusive, `To` exclusive.
 
 ### Kraken REST API quirks

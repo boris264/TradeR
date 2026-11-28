@@ -4,7 +4,10 @@
 The Backtester runs trading strategies against historical candle data and records every trade each strategy takes, so the results can be analysed in Excel.
 
 ## Starting a backtest
-A backtest is started from a menu.
+The backtests are read from `backtests.json`. When it lists none, they're built in a menu instead.
+
+- **`backtests.json`:** every entry is checked before anything runs. If one names an unknown strategy or asset pair, or a period outside the stored candles, the error is logged and no backtest runs.
+- **Menu:** used when the file's list is empty.
 
 ## Backtest configuration
 Each backtest has:
@@ -20,15 +23,15 @@ Each strategy in the backtest has its own settings:
 - **Account size:** the amount in US dollars the account can buy with.
   - **Every pair gets the full account size.** A strategy with $10,000 trading BTC/USD and ETH/USD has $10,000 for each pair.
   - **Pairs quoted in another currency** (e.g. ETH/EUR) use the account size converted into that currency. The conversion happens **once, at the start of the backtest**, using the **historical exchange rate at the backtest's start period**, taken from the exchange's imported candles (e.g. EUR/USD).
-- **Stop loss:** every strategy has a fixed stop loss. Its size is defined by each strategy in code, not chosen in the menu.
+- **Stop loss:** every entry has a stop loss. The strategy sets it in code (the 200 EMA strategy, for example, uses the signal candle's low or high, plus 0.1% room). It isn't chosen in the menu.
 
 Leverage is not supported for now. It may be added in the future, but a strategy can only buy with the account size it has.
 
 **Short positions are simulated.** No coins are borrowed: a short profits when the price falls and loses when it rises, sized from the same account size as a long.
 
 ## Execution flow
-1. Start the Backtester and open the menu.
-2. Configure the backtest: start and end period, which strategies to run, and each strategy's pairs, interval and account size.
+1. Start the Backtester. It reads `backtests.json`, or opens the menu when the file lists no backtests.
+2. Configure the backtests, in the file or the menu: start and end period, which strategies to run, and each strategy's pairs, interval and account size.
 3. Start the backtest. The Excel template is copied to create this backtest's workbook, and every selected strategy begins running.
 4. Each strategy runs on each of its pairs separately, in parallel with the other strategies.
 5. When a strategy finishes, its trades are appended as rows to the workbook's shared data sheet.
@@ -59,6 +62,15 @@ The editable source, which also has the System Context and Containers pages, is 
 - A strategy receives **one candle at a time** and keeps only the state it needs, never the full candle history:
   - streaming indicators (`Create` + `Add`), which keep only their own window;
   - per-day values such as the previous day's high, low or VWAP. The strategy updates today's values on every candle. When a candle from a new day arrives, it saves them as the previous day's values and starts again.
+- **Position state:** the engine tells the strategy whether a position is open:
+  - `LongPositionOpened` or `ShortPositionOpened` after it opens one;
+  - `Idle` after a signal exit, a stop loss or a take profit.
+
+  The strategy uses it to decide whether to look for an entry or for an exit.
+- **Warm-up:** indicators need candles before the start date (a 200-period EMA has no value for its first 199 candles).
+  - Each strategy says how many it needs with `CandlesToPreload`. These candles feed the strategy, but no trades are taken on them.
+  - An EMA also depends on where it starts, so preloading only its period gives values that differ from platforms like TradingView, which start much further back. About 5 × the period is enough; the 200 EMA strategy preloads 1,200.
+  - The Market Data Loader turns the number into a time window: `From − interval × CandlesToPreload`. Kraken skips intervals with no trades, so a window can hold fewer candles than asked for.
 
 ## Parallel strategy execution
 - Multiple strategies run in parallel.
@@ -86,7 +98,7 @@ The editable source, which also has the System Context and Containers pages, is 
 | Open time | When the position was opened (UTC) |
 | Close time | When the position was closed (UTC) |
 | Entry reason | What triggered the entry, as described by the strategy, e.g. "EMA 9 crossed above EMA 21" |
-| Exit reason | What triggered the exit: the strategy's own description of its exit signal, Stop loss, Take profit, or End of backtest |
+| Exit reason | What triggered the exit: the strategy's own description of its exit signal, Stop Loss, Take Profit, or End of backtest |
 | Account size | The run's account size in the pair's currency, the same on every row of the run. Used for return % and drawdown % |
 
 Hold time is calculated in the template from the open and close times.
@@ -107,7 +119,7 @@ Hold time is calculated in the template from the open and close times.
 - **Data contract:** the sheet is `Trades`, with headers in row 1 and trades from row 2, in the column order of the table above.
   - Open and close times are Excel date-times in UTC.
   - Position is exactly `Long` or `Short`.
-  - The engine's exit reasons are exactly `Stop loss`, `Take profit` and `End of backtest`.
+  - The engine's exit reasons are exactly `Stop Loss`, `Take Profit` and `End of backtest`. The template's formulas compare them without regard to case.
   - The writer finds the next free row by column A. The `Trades` sheet has no formulas.
 - **Limits:** 50 runs and 50,000 trades per backtest. It needs Excel 2019 or Microsoft 365, because it uses `MAXIFS` and `MINIFS`.
 - **Runs aren't added together,** because they can be in different currencies.
@@ -133,9 +145,5 @@ Hold time is calculated in the template from the open and close times.
 
 ## Open questions
 - **Both levels in one candle (deferred):** if a single candle's range reaches both the stop loss and the take profit, the candle doesn't say which came first. Not decided yet. Options: count the stop loss (conservative), or look at smaller-interval candles to decide.
-- **Warm-up:** indicators need candles before the start date (a 200-period EMA has no value for its first 199 candles), and so do per-day values (there's no previous day on the first day). Not decided yet:
-  - how many candles before the start date to stream;
-  - who decides that number (each strategy?).
-  
-  Candles before the start date feed the strategy, but no trades are taken on them.
+- **Warm-up for per-day values:** indicator warm-up is decided (see Strategies), but per-day values such as the previous day's high need a full day before the start date, and nothing guarantees one yet.
 - **Day boundary:** crypto trades 24/7, so a "day" needs a definition. Not decided yet whether it's midnight UTC or a cut-off each strategy chooses. A new day should be detected by comparing candle dates, not by counting candles, because Kraken skips minutes with no trades.
